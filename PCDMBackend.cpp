@@ -12,10 +12,11 @@
 #include <Eigen/Geometry>
 
 
+using pCDM::t_FP;
+
+
 namespace
 {
-
-using t_FP = PCDMBackend::t_FP;
 
 template<int rows, int cols> using Array = Eigen::Array<t_FP, rows, cols>;
 template<int rows, int cols> using Matrix = Eigen::Matrix<t_FP, rows, cols>;
@@ -36,8 +37,7 @@ const auto pi = static_cast<t_FP>(M_PI);
  * PTDdispSurf calculates surface displacements associated with a tensile
  * point dislocation(PTD) in an elastic half - space(Okada, 1985). */
 ArrayX3 PTDdispSurf(
-    const std::vector<t_FP> & x,
-    const std::vector<t_FP> & y,
+    const std::array<std::vector<t_FP>, 2> & horizontalCoords,
     const std::array<t_FP, 2> & xy0,
     const t_FP depth,
     const t_FP strike,
@@ -45,6 +45,8 @@ ArrayX3 PTDdispSurf(
     const t_FP DV,
     const t_FP nu)
 {
+    const auto & x = horizontalCoords[0];
+    const auto & y = horizontalCoords[1];
     assert(x.size() == y.size());
 
     const auto numCoords = static_cast<Eigen::Index>(x.size());
@@ -114,58 +116,92 @@ ArrayX3 PTDdispSurf(
 
 PCDMBackend::PCDMBackend()
     : QObject()
+    , m_state{ State::uninitialized }
 {
 }
 
 PCDMBackend::~PCDMBackend() = default;
 
-void PCDMBackend::setInputs(const std::vector<t_FP> & x, const std::vector<t_FP> & y)
+auto PCDMBackend::state() const -> State
 {
-    if (x.size() != y.size())
+    return m_state;
+}
+
+void PCDMBackend::setHorizontalCoords(const std::array<std::vector<t_FP>, 2> & coords)
+{
+    if (coords[0].size() != coords[1].size())
     {
         qDebug() << "Input X, Y must have same size";
+        setState(State::invalidParameters);
         return;
     }
 
-    m_x = x;
-    m_y = y;
+    m_horizontalCoords = coords;
+
+    setState(State::parametersChanged);
 }
 
-const std::array<std::vector<PCDMBackend::t_FP>, 3>& PCDMBackend::results() const
+const std::array<std::vector<t_FP>, 2> & PCDMBackend::horizontalCoords() const
 {
-    return m_results;
+    return m_horizontalCoords;
 }
 
-void PCDMBackend::setPCDMParameters(const PCDMSourceParameters & parameters)
+void PCDMBackend::setParameters(const Parameters & parameters)
 {
-    m_pCDMParameters = parameters;
-}
-
-const PCDMBackend::PCDMSourceParameters & PCDMBackend::pCDMParameters() const
-{
-    return m_pCDMParameters;
-}
-
-#include <string>
-
-void PCDMBackend::runModel()
-{
-    if (m_x.size() != m_y.size())
+    if (m_parameters == parameters)
     {
-        qDebug() << "Input X, Y must have same size";
         return;
     }
 
-    if (m_x.empty())
+    m_parameters = parameters;
+
+    QString msg;
+    if (!parameters.sourceParameters.isValid(&msg))
+    {
+        qDebug() << msg;
+        setState(State::invalidParameters);
+        return;
+    }
+
+    setState(State::parametersChanged);
+}
+
+const PCDMBackend::Parameters & PCDMBackend::parameters() const
+{
+    return m_parameters;
+}
+
+auto PCDMBackend::run() -> State
+{
+    switch (m_state)
+    {
+    case PCDMBackend::State::uninitialized:
+        break;
+    case PCDMBackend::State::parametersChanged:
+        break;
+    case PCDMBackend::State::invalidParameters:
+        qDebug() << "Invalid parameters.";
+        return m_state;
+    case PCDMBackend::State::resultsReady:
+        return m_state; // Nothing to do
+    }
+
+    if (m_horizontalCoords[0].size() != m_horizontalCoords[1].size())
+    {
+        qDebug() << "Input X, Y must have same size";
+        return setState(State::invalidParameters);
+    }
+
+    if (m_horizontalCoords[0].empty())
     {
         qDebug() << "No input set.";
-        return;
+        return setState(State::invalidParameters);
     }
 
-    const auto inputSize = static_cast<Eigen::Index>(m_x.size());
+    const auto inputSize = static_cast<Eigen::Index>(m_horizontalCoords[0].size());
 
-    const auto & omega = m_pCDMParameters.omega;
-    const auto & DV = m_pCDMParameters.dv;
+    const auto & omega = m_parameters.sourceParameters.omega;
+    const auto & DV = m_parameters.sourceParameters.dv;
 
     const Vector3 rotationRad = Vector3(omega[0], omega[1], omega[2]) * pi / 180.0f;
 
@@ -204,11 +240,13 @@ void PCDMBackend::runModel()
     if (DV[0] != 0)
     {
         ue_un_uv1 = PTDdispSurf(
-            m_x, m_y, m_pCDMParameters.horizontalCoord, m_pCDMParameters.depth,
-            strike1, dip1Rad, DV[0], m_pCDMParameters.nu);
+            m_horizontalCoords,
+            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+            strike1, dip1Rad, DV[0], m_parameters.nu);
     }
     else
     {
+        ue_un_uv1.resize(inputSize, Eigen::NoChange);
         ue_un_uv1.setZero();
     }
 
@@ -217,11 +255,13 @@ void PCDMBackend::runModel()
     if (DV[1] != 0)
     {
         ue_un_uv2 = PTDdispSurf(
-            m_x, m_y, m_pCDMParameters.horizontalCoord, m_pCDMParameters.depth,
-            strike2, dip2Rad, DV[1], m_pCDMParameters.nu);
+            m_horizontalCoords,
+            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+            strike2, dip2Rad, DV[1], m_parameters.nu);
     }
     else
     {
+        ue_un_uv2.resize(inputSize, Eigen::NoChange);
         ue_un_uv2.setZero();
     }
 
@@ -230,11 +270,13 @@ void PCDMBackend::runModel()
     if (DV[2] != 0)
     {
         ue_un_uv3 = PTDdispSurf(
-            m_x, m_y, m_pCDMParameters.horizontalCoord, m_pCDMParameters.depth,
-            strike3, dip3Rad, DV[2], m_pCDMParameters.nu);
+            m_horizontalCoords,
+            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+            strike3, dip3Rad, DV[2], m_parameters.nu);
     }
     else
     {
+        ue_un_uv3.resize(inputSize, Eigen::NoChange);
         ue_un_uv3.setZero();
     }
 
@@ -250,4 +292,53 @@ void PCDMBackend::runModel()
     ue = ue_un_uv1.col(0) + ue_un_uv2.col(0) + ue_un_uv3.col(0);
     un = ue_un_uv1.col(1) + ue_un_uv2.col(1) + ue_un_uv3.col(1);
     uv = ue_un_uv1.col(2) + ue_un_uv2.col(2) + ue_un_uv3.col(2);
+
+    return setState(State::resultsReady);
+}
+
+const std::array<std::vector<t_FP>, 3> & PCDMBackend::results() const
+{
+    assert(m_state == State::resultsReady);
+    return m_results;
+}
+
+std::array<std::vector<t_FP>, 3> && PCDMBackend::takeResults()
+{
+    assert(m_state == State::resultsReady);
+    if (m_state == State::resultsReady)
+    {
+        m_state = State::parametersChanged;
+    }
+    return std::move(m_results);
+}
+
+auto PCDMBackend::setState(State state) -> State
+{
+    if (state != State::resultsReady)
+    {
+        for (auto && vec : m_results)
+        {
+            vec.clear();
+        }
+    }
+
+    const auto previousState = m_state;
+    m_state = state;
+    if (previousState != m_state)
+    {
+        emit stateChanged(m_state);
+    }
+
+    return m_state;
+}
+
+bool PCDMBackend::Parameters::operator==(const Parameters & other) const
+{
+    return sourceParameters == other.sourceParameters
+        && nu == other.nu;
+}
+
+bool PCDMBackend::Parameters::operator!=(const Parameters & other) const
+{
+    return !(*this == other);
 }

@@ -9,12 +9,19 @@ set(pluginInterfaceSources
 )
 
 set(sources
+    pCDM_types.h
+    pCDM_types.cpp
     PCDMBackend.h
     PCDMBackend.cpp
+    PCDMModel.h
+    PCDMModel.cpp
     PCDMPlugin.h
     PCDMPlugin.cpp
+    PCDMProject.h
+    PCDMProject.cpp
     PCDMWidget.h
     PCDMWidget.cpp
+    PCDMWidget_StateHelper.h
 )
 
 set(UIs

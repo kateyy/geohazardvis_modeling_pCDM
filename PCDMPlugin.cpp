@@ -12,7 +12,7 @@ PCDMPlugin::PCDMPlugin(
     const QString & version,
     GuiPluginInterface && pluginInterface)
     : GuiPlugin(name, description, vendor, version, std::move(pluginInterface))
-    , m_widget{ std::make_unique<PCDMWidget>() }
+    , m_widget{ std::make_unique<PCDMWidget>("Modeling_pCDM", m_pluginInterface) }
 {
     m_pluginInterface.addWidget(m_widget.get());
 }

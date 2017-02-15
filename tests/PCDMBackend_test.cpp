@@ -5,11 +5,12 @@
 #include <PCDMBackend.h>
 
 
+using pCDM::t_FP;
+
+
 class PCDMBackend_test : public ::testing::Test
 {
 public:
-    using t_FP = PCDMBackend::t_FP;
-
     std::array<std::vector<t_FP>, 2> genInputData(
         t_FP minValX, t_FP stepX, t_FP maxValX,
         t_FP minValY, t_FP stepY, t_FP maxValY)
@@ -52,18 +53,21 @@ TEST_F(PCDMBackend_test, test1)
         -7, 0.1f, 7,
         -5, 0.1f, 5);
 
-    backend.setInputs(input[0], input[1]);
+    backend.setHorizontalCoords(input);
+    ASSERT_EQ(PCDMBackend::State::parametersChanged, backend.state());
 
-    PCDMBackend::PCDMSourceParameters params;
-    params.horizontalCoord = { 0.5f, -0.25f };
-    params.depth = 2.75f;
-    params.omega = { 5, -8, 30 };
-    params.dv = { 0.00144f, 0.00128f, 0.00072f };
+    PCDMBackend::Parameters params;
+    params.sourceParameters.horizontalCoord = { 0.5f, -0.25f };
+    params.sourceParameters.depth = 2.75f;
+    params.sourceParameters.omega = { 5, -8, 30 };
+    params.sourceParameters.dv = { 0.00144f, 0.00128f, 0.00072f };
     params.nu = 0.25f;
 
-    backend.setPCDMParameters(params);
+    backend.setParameters(params);
+    ASSERT_EQ(PCDMBackend::State::parametersChanged, backend.state());
 
-    backend.runModel();
+    backend.run();
+    ASSERT_EQ(PCDMBackend::State::resultsReady, backend.state());
 
     const auto & results = backend.results();
 

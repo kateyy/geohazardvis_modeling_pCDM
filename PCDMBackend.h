@@ -5,6 +5,8 @@
 
 #include <QObject>
 
+#include "pCDM_types.h"
+
 
 /**
  * pCDM: point Compound Dislocation Model
@@ -23,34 +25,52 @@ class PCDMBackend : public QObject
     Q_OBJECT
 
 public:
-    using t_FP = double;
-    
+    enum class State
+    {
+        uninitialized,
+        parametersChanged,
+        invalidParameters,
+        resultsReady
+    };
+
+    struct Parameters
+    {
+        pCDM::PointCDMParameters sourceParameters;
+        /** Poisson's ratio */
+        pCDM::t_FP nu;
+
+        bool operator==(const Parameters & other) const;
+        bool operator!=(const Parameters & other) const;
+    };
+
+public:
     PCDMBackend();
     ~PCDMBackend() override;
 
-    void setInputs(const std::vector<t_FP> & x, const std::vector<t_FP> & y);
+    State state() const;
 
-    const std::array<std::vector<t_FP>, 3> & results() const;
+    void setHorizontalCoords(const std::array<std::vector<pCDM::t_FP>, 2> & coords);
+    const std::array<std::vector<pCDM::t_FP>, 2> & horizontalCoords() const;
 
-    struct PCDMSourceParameters
-    {
-        std::array<t_FP, 2> horizontalCoord; /// East, north; same coordinate system as input x, y
-        t_FP depth;                 /// Positive value
-        std::array<t_FP, 3> omega;  /// Clockwise rotation about x, y, z axes in degrees
-        std::array<t_FP, 3> dv;     /// Potencies
-        t_FP nu;                    /// Poisson's ratio
+    void setParameters(const Parameters & parameters);
+    const Parameters & parameters() const;
 
-    };
+    State run();
 
-    void setPCDMParameters(const PCDMSourceParameters & parameters);
-    const PCDMSourceParameters & pCDMParameters() const;
+    const std::array<std::vector<pCDM::t_FP>, 3> & results() const;
+    /** Take the result memory from the backend, omitting an additional copy step. */
+    std::array<std::vector<pCDM::t_FP>, 3> && takeResults();
 
-    void runModel();
+signals:
+    void stateChanged(State state);
 
 private:
-    PCDMSourceParameters m_pCDMParameters;
-    std::vector<t_FP> m_x;
-    std::vector<t_FP> m_y;
+    State setState(State state);
 
-    std::array<std::vector<t_FP>, 3> m_results;
+private:
+    State m_state;
+
+    Parameters m_parameters;
+    std::array<std::vector<pCDM::t_FP>, 2> m_horizontalCoords;
+    std::array<std::vector<pCDM::t_FP>, 3> m_results;
 };
