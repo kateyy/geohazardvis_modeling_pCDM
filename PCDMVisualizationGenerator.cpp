@@ -108,6 +108,8 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     visDataSet->DeepCopy(dataSet);
     assert(visDataSet->GetPointData()->GetNumberOfArrays() == 0);
 
+    visDataSet->GetFieldData()->PassData(dataSet->GetFieldData());
+
     const auto numPoints = dataSet->GetNumberOfPoints();
 
 

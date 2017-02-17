@@ -349,6 +349,7 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
     }
 
     m_visGenerator->setProject(m_project.get());
+    m_visGenerator->dataObject();   // Initialize the preview data and pass it to the UI
 
     updateSurfaceSummary();
 
@@ -516,26 +517,65 @@ void PCDMWidget::updateSurfaceSummary()
         dataSet->GetBounds(bounds.data());
     }
 
-    int row = 0;
-    m_ui->surfaceSummaryTable->setColumnCount(2);
-    m_ui->surfaceSummaryTable->setRowCount(5);
-    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Poisson's Ratio"));
-    m_ui->surfaceSummaryTable->setItem(row++, 1,
-        new QTableWidgetItem(QString::number(m_project->poissonsRatio())));
-    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Geometry"));
-    m_ui->surfaceSummaryTable->setItem(row++, 1,
-        new QTableWidgetItem(m_project->horizontalCoordinatesGeometryType()));
-    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Number of Coordinates"));
-    m_ui->surfaceSummaryTable->setItem(row++, 1,
-        new QTableWidgetItem(QString::number(numCoordinates)));
-    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Extent (West-East)"));
-    m_ui->surfaceSummaryTable->setItem(row++, 1, new QTableWidgetItem(
-        bounds.isEmpty() ? ""
-        : QString::number(bounds.dimension(0)[0]) + "; " + QString::number(bounds.dimension(0)[1])));
-    m_ui->surfaceSummaryTable->setItem(row++, 0, new QTableWidgetItem("Extent (South-North)"));
-    m_ui->surfaceSummaryTable->setItem(row++, 1, new QTableWidgetItem(
-        bounds.isEmpty() ? ""
-        : QString::number(bounds.dimension(1)[0]) + "; " + QString::number(bounds.dimension(1)[1])));
+    {
+        struct AddRowsWorker
+        {
+            ~AddRowsWorker()
+            {
+                table.setColumnCount(2);
+                table.setRowCount(static_cast<int>(lines.size()));
+                for (int i = 0; i < static_cast<int>(lines.size()); ++i)
+                {
+                    table.setItem(i, 0, new QTableWidgetItem(lines[i].first));
+                    table.setItem(i, 1, new QTableWidgetItem(lines[i].second));
+                }
+            }
+            QTableWidget & table;
+            std::vector<std::pair<QString, QString>> lines;
+        } addRows{ *m_ui->surfaceSummaryTable, {} };
+
+        auto addRow = [&addRows] (const QString & title, const QString & text)
+        {
+            addRows.lines.emplace_back(title, text);
+        };
+
+        auto && coords = m_project->coordinateSystem();
+
+        auto && unit = coords.unitOfMeasurement;
+
+        addRow("Poisson's Ratio", QString::number(m_project->poissonsRatio()));
+        addRow("Geometry", m_project->horizontalCoordinatesGeometryType());
+        addRow("Number of Coordinates", QString::number(numCoordinates));
+        addRow("Extent (West-East)", bounds.isEmpty() ? ""
+            : QString::number(bounds.dimension(0)[0]) + unit + ", "
+            + QString::number(bounds.dimension(0)[1]) + unit);
+        addRow("Extent (South-North)", bounds.isEmpty() ? ""
+            : QString::number(bounds.dimension(1)[0]) + unit + ", "
+            + QString::number(bounds.dimension(1)[1]) + unit);
+        QString referencePointStr, relativeReferenceStr;
+        if (coords.isReferencePointValid())
+        {
+            auto && latLong = coords.referencePointLatLong;
+            referencePointStr =
+                QString::number(latLong[0]) + QChar(0xb0) + (latLong[0] >= 0 ? "N" : "S") + " "
+                + QString::number(latLong[1]) + QChar(0xb0) + (latLong[1] >= 0 ? "E" : "W")
+                + " (" + coords.geographicSystem + ")";
+            
+            const auto bounds2D = bounds.convertTo<2>();
+            const auto localRef = bounds2D.min() + 
+                (bounds2D.componentSize() * coords.referencePointLocalRelative);
+
+            relativeReferenceStr = "Northing: " + QString::number(localRef[1]) + unit
+                + ", Easting: " + QString::number(localRef[0]) + unit;
+        }
+        else
+        {
+            referencePointStr = "(unspecified)";
+            relativeReferenceStr = "(unspecified)";
+        }
+        addRow("Reference Point", referencePointStr);
+        addRow("Local Reference", relativeReferenceStr);
+    }
 
     m_ui->surfaceSummaryTable->resizeColumnsToContents();
     m_ui->surfaceSummaryTable->resizeRowsToContents();

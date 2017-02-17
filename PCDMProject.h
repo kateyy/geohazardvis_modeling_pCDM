@@ -11,6 +11,8 @@
 
 #include <vtkSmartPointer.h>
 
+#include <core/CoordinateSystems_fwd.h>
+
 #include "pCDM_types.h"
 
 
@@ -37,11 +39,18 @@ public:
      * Import coordinates (structure) of the data set into the project.
      * @return true after successfully fetching coordinates from the data set. Only if true is
      * returned, project settings and data is modified. In this case, previous modeling results are
-     * invalidated. */
+     * invalidated.
+     * ReferenceCoordinateSystemSpecification will be read from the data set's field data, if
+     * available.
+     */
     bool importHorizontalCoordinatesFrom(vtkDataSet & dataSet);
     vtkDataSet * horizontalCoordinatesDataSet();
     const std::array<std::vector<pCDM::t_FP>, 2> & horizontalCoordinateValues();
     const QString & horizontalCoordinatesGeometryType() const;
+    /**
+     * Read coordinate system specifications from the coordinate data set's field data.
+     */
+    ReferencedCoordinateSystemSpecification coordinateSystem() const;
 
     /** Set the Poisson's ratio. Changing nu invalidates previous modeling results. */
     void setPoissonsRatio(pCDM::t_FP nu);

@@ -15,6 +15,7 @@
 #include <vtkTable.h>
 #include <vtkVector.h>
 
+#include <core/CoordinateSystems.h>
 #include <core/io/TextFileReader.h>
 #include <core/utility/conversions.h>
 #include <core/utility/DataExtent.h>
@@ -126,9 +127,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
         return false;
     }
 
-    vtkSmartPointer<vtkDataSet> newDataSet;
-
-    auto applyNewDataSet = [this, &newDataSet] (const QString & dataTypeString)
+    auto applyNewDataSet = [this, &dataSet] (vtkDataSet & newDataSet, const QString & dataTypeString)
     {
         invalidateModels();
 
@@ -137,15 +136,19 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
             vec.clear();
         }
 
-        assert(newDataSet);
-        m_coordsDataSet = newDataSet;
+        m_coordsDataSet = &newDataSet;
         m_coordsGeometryType = dataTypeString;
+        const auto coordsSpec = ReferencedCoordinateSystemSpecification::fromFieldData(*dataSet.GetFieldData());
+        coordsSpec.writeToFieldData(*newDataSet.GetFieldData());
 
-        accessSettings([&dataTypeString] (QSettings & settings)
+        accessSettings([&dataTypeString, &coordsSpec] (QSettings & settings)
         {
             settings.beginGroup("Surface");
             settings.setValue("ValidData", true);
             settings.setValue("DataType", dataTypeString);
+            QVariant coordsVariant;
+            coordsVariant.setValue(coordsSpec);
+            settings.setValue("CoordinateSystem", coordsVariant);
         });
 
         emit horizontalCoordinatesChanged();
@@ -157,7 +160,6 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
     {
         auto & sourceImage = *sourceImagePtr;
         auto newImage = vtkSmartPointer<vtkImageData>::New();
-        newDataSet = newImage;
         auto & image = *newImage;
 
         // Eliminate elevations in the structure
@@ -184,7 +186,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
         imageSpec.setValue("Extent", arrayToString(std::array<int, 4>(extent.convertTo<2>())));
         imageSpec.setValue("Spacing", vectorToString(convertTo<2>(spacing)));
 
-        return applyNewDataSet("Regular Grid");
+        return applyNewDataSet(image, "Regular Grid");
     }
 
     if (auto sourcePolyPtr = vtkPolyData::SafeDownCast(&dataSet))
@@ -198,7 +200,6 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
         // Copy horizontal coordinates into a new data set used for visualization
 
         auto newPoly = vtkSmartPointer<vtkPolyData>::New();
-        newDataSet = newPoly;
         auto & poly = *newPoly;
 
         auto newPoints = vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>::New();
@@ -253,7 +254,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
             return false;
         }
 
-        return applyNewDataSet("Point Cloud");
+        return applyNewDataSet(poly, "Point Cloud");
     }
 
     return false;
@@ -296,6 +297,20 @@ const std::array<std::vector<pCDM::t_FP>, 2> & PCDMProject::horizontalCoordinate
 const QString & PCDMProject::horizontalCoordinatesGeometryType() const
 {
     return m_coordsGeometryType;
+}
+
+ReferencedCoordinateSystemSpecification PCDMProject::coordinateSystem() const
+{
+    ReferencedCoordinateSystemSpecification spec;
+
+    if (!m_coordsDataSet)
+    {
+        return spec;
+    }
+
+    spec.readFromFieldData(*m_coordsDataSet->GetFieldData());
+
+    return spec;
 }
 
 void PCDMProject::setPoissonsRatio(pCDM::t_FP nu)
@@ -460,7 +475,10 @@ void PCDMProject::readCoordinates()
     bool isPoints = false;
     QString geometryType;
 
-    readSettings([&hasValidData, &isGrid, &isPoints, &geometryType] (const QSettings & settings)
+    ReferencedCoordinateSystemSpecification coordsSpec;
+
+    readSettings([&hasValidData, &isGrid, &isPoints, &geometryType, &coordsSpec]
+    (const QSettings & settings)
     {
         auto validProp = settings.value("Surface/ValidData");
         if (!validProp.isValid() || !validProp.toBool())
@@ -468,6 +486,9 @@ void PCDMProject::readCoordinates()
             return;
         }
         hasValidData = true;
+
+        coordsSpec =
+            settings.value("Surface/CoordinateSystem").value<ReferencedCoordinateSystemSpecification>();
 
         const auto typeProp = settings.value("Surface/DataType");
         if (!typeProp.isValid())
@@ -506,10 +527,11 @@ void PCDMProject::readCoordinates()
         return;
     }
 
-    auto setToValid = [this, &geometryType] (vtkDataSet * dataSet)
+    auto setToValid = [this, &geometryType, &coordsSpec] (vtkDataSet & dataSet)
     {
         m_coordsGeometryType = geometryType;
-        m_coordsDataSet = dataSet;
+        m_coordsDataSet = &dataSet;
+        coordsSpec.writeToFieldData(*dataSet.GetFieldData());
     };
 
     if (isGrid)
@@ -543,7 +565,7 @@ void PCDMProject::readCoordinates()
         image->SetExtent(extent.data());
         image->SetSpacing(spacing.GetData());
 
-        setToValid(image);
+        setToValid(*image);
 
         return;
     }
@@ -606,7 +628,7 @@ void PCDMProject::readCoordinates()
         poly->SetPoints(points);
         poly->SetVerts(verts);
 
-        setToValid(poly);
+        setToValid(*poly);
 
         return;
     }
