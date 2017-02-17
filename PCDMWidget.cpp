@@ -22,6 +22,7 @@
 
 #include "PCDMModel.h"
 #include "PCDMProject.h"
+#include "PCDMVisualizationGenerator.h"
 #include "PCDMWidget_StateHelper.h"
 
 
@@ -39,6 +40,7 @@ PCDMWidget::PCDMWidget(
     , m_ui{ std::make_unique<Ui_PCDMWidget>() }
     , m_stateMachine{ std::make_unique<QStateMachine>() }
     , m_stateHelper{ std::make_unique<PCDMWidget_StateHelper>() }
+    , m_visGenerator{ std::make_unique<PCDMVisualizationGenerator>(pluginInterface.dataMapping()) }
 {
     m_ui->setupUi(this);
     m_ui->openProjectButton->setIcon(qApp->style()->standardIcon(QStyle::SP_DialogOpenButton));
@@ -58,6 +60,7 @@ PCDMWidget::PCDMWidget(
     });
 
     connect(m_ui->runButton, &QAbstractButton::clicked, this, &PCDMWidget::runModel);
+    connect(m_ui->openVisualizationButton, &QAbstractButton::clicked, this, &PCDMWidget::showVisualization);
 }
 
 PCDMWidget::~PCDMWidget() = default;
@@ -219,7 +222,16 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
+    m_visGenerator->setProject(nullptr);
+
     m_project = std::make_unique<PCDMProject>(rootFolder);
+    if (!m_project->models().empty())
+    {
+        m_lastModelTimestamp = m_project->models().rbegin()->first;
+    }
+
+    m_visGenerator->setProject(m_project.get());
+
     //connect(m_project.get(), &PCDMProject::progressMessageChanged, this, &SimulationWidget::informProgress);
 
     //if (sender() != m_ui->projectLocationCombo) // don't change the combo box contents while using it
@@ -437,26 +449,49 @@ void PCDMWidget::runModel()
         return;
     }
     auto & model = *modelPtr;
+    m_lastModelTimestamp = model.timestamp();
 
     model.setParameters(sourceParams);
 
     model.requestResultsAsync();
     emit m_stateHelper->computingModel();
 
-    // TODO responsive GUI
+    // TODO responsive GUI for very large setups
     qApp->processEvents();
 
     const bool result = model.waitForResults();
     emit m_stateHelper->computingEnded();
 
-    if (result)
+    if (!result)
     {
-        QMessageBox::information(this, "pCDM Modeling", "Done!");
+        QMessageBox::critical(this, "pCDM Modeling", "An error occurred in the modeling back-end.");
+        return;
     }
-    else
+
+    m_visGenerator->showModel(model);
+}
+
+void PCDMWidget::showVisualization()
+{
+    if (!m_project)
     {
-        QMessageBox::critical(this, "pCDM Modeling", "An error occurred in the modeling backend.");
+        return;
     }
+
+    m_visGenerator->openRenderView();
+
+    if (!m_lastModelTimestamp.isValid())
+    {
+        return;
+    }
+
+    auto model = m_project->model(m_lastModelTimestamp);
+    if (!model)
+    {
+        return;
+    }
+
+    m_visGenerator->showModel(*model);
 }
 
 void PCDMWidget::sourceParametersToUi(const pCDM::PointCDMParameters & parameters)

@@ -97,7 +97,7 @@ public:
     */
     DataObject * resultDataObject();
 
-    const std::array<std::vector<pCDM::t_FP>, 3> & results() const;
+    const std::array<std::vector<pCDM::t_FP>, 3> & results();
 
     void invalidateResults();
 

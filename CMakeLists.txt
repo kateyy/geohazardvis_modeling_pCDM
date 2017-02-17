@@ -19,6 +19,8 @@ set(sources
     PCDMPlugin.cpp
     PCDMProject.h
     PCDMProject.cpp
+    PCDMVisualizationGenerator.h
+    PCDMVisualizationGenerator.cpp
     PCDMWidget.h
     PCDMWidget.cpp
     PCDMWidget_StateHelper.h

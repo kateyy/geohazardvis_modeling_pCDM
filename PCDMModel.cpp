@@ -64,7 +64,7 @@ PCDMModel::PCDMModel(
     readSettings([this] (const QSettings & settings)
     {
         m_name = settings.value("Name").toString();
-        m_hasStoredResults = settings.value("ResultsStored").toBool();
+        m_hasStoredResults = settings.value("HasStoredResults").toBool();
     });
 
     connect(&m_computeFutureWatcher, &QFutureWatcher<void>::finished,
@@ -222,8 +222,13 @@ DataObject * PCDMModel::resultDataObject()
     return nullptr;
 }
 
-const std::array<std::vector<pCDM::t_FP>, 3> & PCDMModel::results() const
+const std::array<std::vector<pCDM::t_FP>, 3> & PCDMModel::results()
 {
+    if (m_results[0].empty() && m_hasStoredResults)
+    {
+        readResults();
+    }
+
     return m_results;
 }
 
@@ -311,11 +316,13 @@ void PCDMModel::readResults()
     }
 
     auto reader = TextFileReader(fileName);
-    TextFileReader::Vector_t<t_FP> readResults;
-    reader.read(readResults);
+    TextFileReader::Vector_t<QString> header;
+    reader.read(header, 1);
+    TextFileReader::Vector_t<t_FP> storedResults;
+    reader.read(storedResults);
 
     if (!reader.stateFlags().testFlag(TextFileReader::successful)
-        || readResults.size() != m_results.size())
+        || storedResults.size() != m_results.size())
     {
         qDebug() << "Reading previously stored results failed. Discarding data.";
         QFile(fileName).remove();
@@ -326,7 +333,7 @@ void PCDMModel::readResults()
 
     for (size_t i = 0; i < m_results.size(); ++i)
     {
-        m_results[i] = std::move(readResults[i]);
+        m_results[i] = std::move(storedResults[i]);
     }
 }
 

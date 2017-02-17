@@ -147,6 +147,8 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
             settings.setValue("DataType", dataTypeString);
         });
 
+        emit horizontalCoordinatesChanged();
+
         return true;
     };
 
@@ -421,7 +423,7 @@ void PCDMProject::readModels()
 
     for (auto && file : entries)
     {
-        const auto timestamp = stringToTimestamp(file.baseName());
+        const auto timestamp = stringToTimestamp(file.completeBaseName());
         if (!timestamp.isValid())
         {
             continue;
@@ -577,8 +579,18 @@ void PCDMProject::readCoordinates()
         auto points = vtkSmartPointer<vtkPoints>::New();
         points->SetData(pointsData);
 
+        auto pointIds = vtkSmartPointer<vtkIdList>::New();
+        pointIds->SetNumberOfIds(numPoints);
+        std::iota(
+            pointIds->GetPointer(0),
+            pointIds->GetPointer(numPoints),
+            0);
+        auto verts = vtkSmartPointer<vtkCellArray>::New();
+        verts->InsertNextCell(pointIds);
+
         auto poly = vtkSmartPointer<vtkPolyData>::New();
         poly->SetPoints(points);
+        poly->SetVerts(verts);
 
         m_coordsDataSet = poly;
 

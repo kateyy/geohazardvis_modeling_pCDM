@@ -60,6 +60,9 @@ public:
     /** Parse a timestamp encoded as string and create a QTimeStamp */
     static QDateTime stringToTimestamp(const QString & timestamp);
 
+signals:
+    void horizontalCoordinatesChanged();
+
 private:
     void readModels();
     void readCoordinates();

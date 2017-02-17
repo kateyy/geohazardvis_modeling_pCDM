@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QDateTime>
 #include <QDockWidget>
 
 #include <memory>
@@ -13,6 +14,7 @@ class DataSetFilter;
 class GuiPluginInterface;
 class PCDMModel;
 class PCDMProject;
+class PCDMVisualizationGenerator;
 class PCDMWidget_StateHelper;
 class Ui_PCDMWidget;
 
@@ -42,6 +44,7 @@ private:
     void updateSurfacePropertiesUi();
 
     void runModel();
+    void showVisualization();
 
     void sourceParametersToUi(const pCDM::PointCDMParameters & parameters);
     pCDM::PointCDMParameters sourceParametersFromUi() const;
@@ -60,7 +63,8 @@ private:
     std::unique_ptr<QStateMachine> m_stateMachine;
     std::unique_ptr<PCDMWidget_StateHelper> m_stateHelper;
     std::unique_ptr<DataSetFilter> m_coordsDataSetFilter;
-
+    std::unique_ptr<PCDMVisualizationGenerator> m_visGenerator;
 
     std::unique_ptr<PCDMProject> m_project;
+    QDateTime m_lastModelTimestamp;
 };
