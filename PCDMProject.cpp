@@ -139,6 +139,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
 
         assert(newDataSet);
         m_coordsDataSet = newDataSet;
+        m_coordsGeometryType = dataTypeString;
 
         accessSettings([&dataTypeString] (QSettings & settings)
         {
@@ -183,7 +184,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
         imageSpec.setValue("Extent", arrayToString(std::array<int, 4>(extent.convertTo<2>())));
         imageSpec.setValue("Spacing", vectorToString(convertTo<2>(spacing)));
 
-        return applyNewDataSet("Grid");
+        return applyNewDataSet("Regular Grid");
     }
 
     if (auto sourcePolyPtr = vtkPolyData::SafeDownCast(&dataSet))
@@ -252,13 +253,13 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
             return false;
         }
 
-        return applyNewDataSet("Points");
+        return applyNewDataSet("Point Cloud");
     }
 
     return false;
 }
 
-vtkDataSet * PCDMProject::horizontalCoordinates()
+vtkDataSet * PCDMProject::horizontalCoordinatesDataSet()
 {
     return m_coordsDataSet;
 }
@@ -290,6 +291,11 @@ const std::array<std::vector<pCDM::t_FP>, 2> & PCDMProject::horizontalCoordinate
     }
 
     return m_horizontalCoordsValues;
+}
+
+const QString & PCDMProject::horizontalCoordinatesGeometryType() const
+{
+    return m_coordsGeometryType;
 }
 
 void PCDMProject::setPoissonsRatio(pCDM::t_FP nu)
@@ -452,8 +458,9 @@ void PCDMProject::readCoordinates()
     bool hasValidData = false;
     bool isGrid = false;
     bool isPoints = false;
+    QString geometryType;
 
-    readSettings([&hasValidData, &isGrid, &isPoints] (const QSettings & settings)
+    readSettings([&hasValidData, &isGrid, &isPoints, &geometryType] (const QSettings & settings)
     {
         auto validProp = settings.value("Surface/ValidData");
         if (!validProp.isValid() || !validProp.toBool())
@@ -467,13 +474,13 @@ void PCDMProject::readCoordinates()
         {
             return;
         }
-        const auto typeString = typeProp.toString();
-        if (typeString == "Grid")
+        geometryType = typeProp.toString();
+        if (geometryType == "Regular Grid")
         {
             isGrid = true;
             return;
         }
-        if (typeString == "Points")
+        if (geometryType == "Point Cloud")
         {
             isPoints = true;
             return;
@@ -489,6 +496,7 @@ void PCDMProject::readCoordinates()
             settings.remove("DataType");
         });
         m_coordsDataSet = {};
+        m_coordsGeometryType.clear();
         QFile(fileName).remove();
     };
 
@@ -497,6 +505,12 @@ void PCDMProject::readCoordinates()
         setToInvalid();
         return;
     }
+
+    auto setToValid = [this, &geometryType] (vtkDataSet * dataSet)
+    {
+        m_coordsGeometryType = geometryType;
+        m_coordsDataSet = dataSet;
+    };
 
     if (isGrid)
     {
@@ -529,7 +543,7 @@ void PCDMProject::readCoordinates()
         image->SetExtent(extent.data());
         image->SetSpacing(spacing.GetData());
 
-        m_coordsDataSet = image;
+        setToValid(image);
 
         return;
     }
@@ -592,7 +606,7 @@ void PCDMProject::readCoordinates()
         poly->SetPoints(points);
         poly->SetVerts(verts);
 
-        m_coordsDataSet = poly;
+        setToValid(poly);
 
         return;
     }

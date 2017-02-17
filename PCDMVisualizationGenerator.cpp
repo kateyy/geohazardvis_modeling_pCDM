@@ -98,7 +98,7 @@ DataObject * PCDMVisualizationGenerator::dataObject()
         return m_dataObject.get();
     }
 
-    auto dataSet = m_project->horizontalCoordinates();
+    auto dataSet = m_project->horizontalCoordinatesDataSet();
     if (!dataSet)
     {
         return{};
@@ -160,7 +160,7 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         return;
     }
 
-    auto dataSet = m_project->horizontalCoordinates();
+    auto dataSet = m_project->horizontalCoordinatesDataSet();
     if (!dataSet)
     {
         return;

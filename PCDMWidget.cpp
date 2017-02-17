@@ -6,6 +6,7 @@
 
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QMenu>
 #include <QMessageBox>
 #include <QSettings>
 #include <QStateMachine>
@@ -43,27 +44,61 @@ PCDMWidget::PCDMWidget(
     , m_visGenerator{ std::make_unique<PCDMVisualizationGenerator>(pluginInterface.dataMapping()) }
 {
     m_ui->setupUi(this);
-    m_ui->openProjectButton->setIcon(qApp->style()->standardIcon(QStyle::SP_DialogOpenButton));
-    m_ui->newProjectButton->setIcon(qApp->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
 
-    setupStateMachine();
+    m_projectMenu = std::make_unique<QMenu>();
+    auto projectNewAction = m_projectMenu->addAction("&New");
+    auto projectOpenAction = m_projectMenu->addAction("&Open");
+    m_closeProjectAction = m_projectMenu->addAction("&Close");
+    m_showProjectFolderAction = m_projectMenu->addAction("Show Project &Folder");
+    m_recentProjectsMenu = m_projectMenu->addMenu("&Recent Projects");
 
-    connect(m_ui->openProjectButton, &QAbstractButton::clicked, this, &PCDMWidget::openProjectDialog);
-    connect(m_ui->newProjectButton, &QAbstractButton::clicked, this, &PCDMWidget::newProjectDialog);
-    connect(m_ui->surfaceSaveButton, &QAbstractButton::clicked, this, &PCDMWidget::saveSurfaceParameters);
-    connect(m_ui->showProjectFolderButton, &QAbstractButton::clicked, [this] ()
+    connect(m_ui->projectMenuButton, &QAbstractButton::clicked, [this] ()
+    {
+        m_projectMenu->exec(m_ui->projectMenuButton->mapToGlobal(
+            QPoint(0, m_ui->projectMenuButton->height())));
+    });
+
+    projectNewAction->setIcon(qApp->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    projectOpenAction->setIcon(qApp->style()->standardIcon(QStyle::SP_DialogOpenButton));
+    m_closeProjectAction->setIcon(qApp->style()->standardIcon(QStyle::SP_DialogCloseButton));
+
+    connect(projectNewAction, &QAction::triggered, this, &PCDMWidget::newProjectDialog);
+    connect(projectOpenAction, &QAction::triggered, this, &PCDMWidget::openProjectDialog);
+    connect(m_closeProjectAction, &QAction::triggered, [this] ()
+    {
+        loadProjectFrom({});
+    });
+    connect(m_showProjectFolderAction, &QAction::triggered, [this] ()
     {
         if (m_project)
         {
             QDesktopServices::openUrl(QUrl::fromLocalFile(m_project->rootFolder()));
         }
     });
+    connect(m_recentProjectsMenu, &QMenu::triggered, [this] (QAction * action)
+    {
+        if (action)
+        {
+            checkLoadProjectFrom(action->data().toString(), true);
+        }
+    });
+
+    connect(m_ui->surfaceSaveButton, &QAbstractButton::clicked, this, &PCDMWidget::saveSurfaceParameters);
 
     connect(m_ui->runButton, &QAbstractButton::clicked, this, &PCDMWidget::runModel);
     connect(m_ui->openVisualizationButton, &QAbstractButton::clicked, this, &PCDMWidget::showVisualization);
+
+    setupStateMachine();
+
+    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
+
+    loadSettings();
 }
 
-PCDMWidget::~PCDMWidget() = default;
+PCDMWidget::~PCDMWidget()
+{
+    saveSettings();
+}
 
 void PCDMWidget::setupStateMachine()
 {
@@ -106,7 +141,8 @@ void PCDMWidget::setupStateMachine()
     m_ui->surfaceStackedWidget->setCurrentIndex(0);
     m_ui->modelingTabWidget->setCurrentIndex(0);
 
-    sNoProject->assignProperty(m_ui->showProjectFolderButton, "enabled", false);
+    sNoProject->assignProperty(m_closeProjectAction, "enabled", false);
+    sNoProject->assignProperty(m_showProjectFolderAction, "enabled", false);
     sNoProject->assignProperty(m_ui->surfaceGroupBox, "enabled", false);
     sNoProject->assignProperty(m_ui->modelingTabWidget, "enabled", false);
 
@@ -136,6 +172,65 @@ void PCDMWidget::setupStateMachine()
     machine.start();
 }
 
+void PCDMWidget::loadSettings()
+{
+    m_pluginInterface.readSettings(m_settingsGroup, [this] (const QSettings & settings)
+    {
+        m_recentProjects = settings.value("RecentProjects").toStringList();
+
+        const auto projectToLoad = settings.value("LastProject").toString();
+        if (!projectToLoad.isEmpty() && PCDMProject::checkFolderIsProject(projectToLoad))
+        {
+            checkLoadProjectFrom(projectToLoad, false);
+        }
+    });
+
+    updateRecentProjectsMenu();
+}
+
+void PCDMWidget::saveSettings()
+{
+    m_pluginInterface.readWriteSettings(m_settingsGroup, [this] (QSettings & settings)
+    {
+        settings.setValue("RecentProjects", m_recentProjects);
+        settings.setValue("LastProject", m_project ? m_project->rootFolder() : "");
+    });
+}
+
+void PCDMWidget::prependRecentProject(const QString & projectRootFolder)
+{
+    const int previousIndex = m_recentProjects.indexOf(projectRootFolder);
+    if (previousIndex == 0)
+    {
+        // everything is fine already
+        return;
+    }
+    if (previousIndex > 0)
+    {
+        m_recentProjects.removeAt(previousIndex);
+    }
+
+    m_recentProjects.prepend(projectRootFolder);
+
+    updateRecentProjectsMenu();
+}
+
+void PCDMWidget::updateRecentProjectsMenu()
+{
+    m_recentProjectsMenu->clear();
+
+    for (int i = 0; i < m_recentProjects.size(); ++i)
+    {
+        const auto numberString = i < 10
+            ? "&" + QString::number(i)
+            : (i == 10
+                ? "1&0"
+                : QString::number(i));
+        const auto & projectDir = m_recentProjects[i];
+        m_recentProjectsMenu->addAction(numberString + " " + projectDir)->setData(projectDir);
+    }
+}
+
 void PCDMWidget::openProjectDialog()
 {
     QDir searchDir(m_project ? m_project->rootFolder() : "");
@@ -145,6 +240,14 @@ void PCDMWidget::openProjectDialog()
 
     if (newPath.isEmpty())
     {
+        return;
+    }
+
+    QString errorMessage;
+    if (!PCDMProject::checkFolderIsProject(newPath, &errorMessage))
+    {
+        QMessageBox::warning(this, "Project Selection",
+            "Cannot open the selected project. " + errorMessage);
         return;
     }
 
@@ -206,7 +309,7 @@ void PCDMWidget::newProjectDialog()
 
 void PCDMWidget::loadProjectFrom(const QString & rootFolder)
 {
-    // save configuration of last project, if applicable
+    // Cleanup previously loaded project
     if (m_project)
     {
         if (m_project->rootFolder() == rootFolder)
@@ -214,17 +317,32 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
             return;
         }
 
+        const auto toBeDeleted = std::move(m_project);
+
         // TODO store GUI session
-        // TODO cleanup visualizations
+
+        m_visGenerator->setProject(nullptr);
+
+        updateSurfaceSummary();
+        updateModelsList();
+        m_ui->projectNameEdit->setText("");
 
         emit m_stateHelper->projectUnloaded();
 
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     }
 
-    m_visGenerator->setProject(nullptr);
+    // Save cleaned-up state in case loading the project causes application failure.
+    saveSettings();
+
+    if (rootFolder.isEmpty())
+    {
+        return;
+    }
 
     m_project = std::make_unique<PCDMProject>(rootFolder);
+    m_ui->projectNameEdit->setText(QDir(rootFolder).dirName());
+
     if (!m_project->models().empty())
     {
         m_lastModelTimestamp = m_project->models().rbegin()->first;
@@ -232,16 +350,9 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
 
     m_visGenerator->setProject(m_project.get());
 
-    //connect(m_project.get(), &PCDMProject::progressMessageChanged, this, &SimulationWidget::informProgress);
+    updateSurfaceSummary();
 
-    //if (sender() != m_ui->projectLocationCombo) // don't change the combo box contents while using it
-    //{
-    //    preprendRecentProject(projectFile);
-    //}
-
-    updateSurfacePropertiesUi();
-
-    if (m_project->horizontalCoordinates())
+    if (m_project->horizontalCoordinatesDataSet())
     {
         emit m_stateHelper->projectLoadedWithValidSurface();
     }
@@ -250,16 +361,28 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
         emit m_stateHelper->projectLoadedWithInvalidSurface();
     }
 
-    //sourceParametersToUi(...) // session
     updateModelsList();
 
     // project/model preview data set to ui
     // (force) Update preview
 
-    m_pluginInterface.readWriteSettings(m_settingsGroup, [this] (QSettings & settings) {
-        settings.setValue("LastProject", m_project->rootFolder());
-        //settings.setValue("RecentProjects", m_recentProjects);
-    });
+    prependRecentProject(rootFolder);
+    saveSettings();
+}
+
+void PCDMWidget::checkLoadProjectFrom(const QString & rootFolder, bool reportError)
+{
+    QString errorMessage;
+    if (!PCDMProject::checkFolderIsProject(rootFolder, &errorMessage))
+    {
+        if (reportError)
+        {
+            QMessageBox::warning(this, "Project Selection",
+                "Cannot open the selected project. " + errorMessage);
+        }
+        return;
+    }
+    loadProjectFrom(rootFolder);
 }
 
 void PCDMWidget::prepareSetupSurfaceParameters()
@@ -371,12 +494,12 @@ void PCDMWidget::saveSurfaceParameters()
 
     m_project->setPoissonsRatio(static_cast<pCDM::t_FP>(m_ui->poissonsRatioEdit->value()));
 
-    updateSurfacePropertiesUi();
+    updateSurfaceSummary();
 
     emit m_stateHelper->validSurfaceSaved();
 }
 
-void PCDMWidget::updateSurfacePropertiesUi()
+void PCDMWidget::updateSurfaceSummary()
 {
     if (!m_project)
     {
@@ -387,34 +510,30 @@ void PCDMWidget::updateSurfacePropertiesUi()
     vtkIdType numCoordinates = 0;
     DataBounds bounds;
     QString dataType;
-    if (auto dataSet = m_project->horizontalCoordinates())
+    if (auto dataSet = m_project->horizontalCoordinatesDataSet())
     {
         numCoordinates = dataSet->GetNumberOfPoints();
         dataSet->GetBounds(bounds.data());
-        if (dataSet->GetDataObjectType() == VTK_IMAGE_DATA)
-        {
-            dataType = "Regular Grid";
-        }
-        else
-        {
-            dataType = "Point Cloud";
-        }
     }
 
+    int row = 0;
     m_ui->surfaceSummaryTable->setColumnCount(2);
-    m_ui->surfaceSummaryTable->setRowCount(4);
-    m_ui->surfaceSummaryTable->setItem(0, 0, new QTableWidgetItem("Poisson's Ratio"));
-    m_ui->surfaceSummaryTable->setItem(0, 1,
+    m_ui->surfaceSummaryTable->setRowCount(5);
+    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Poisson's Ratio"));
+    m_ui->surfaceSummaryTable->setItem(row++, 1,
         new QTableWidgetItem(QString::number(m_project->poissonsRatio())));
-    m_ui->surfaceSummaryTable->setItem(1, 0, new QTableWidgetItem("Number of Coordinates"));
-    m_ui->surfaceSummaryTable->setItem(1, 1,
+    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Geometry"));
+    m_ui->surfaceSummaryTable->setItem(row++, 1,
+        new QTableWidgetItem(m_project->horizontalCoordinatesGeometryType()));
+    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Number of Coordinates"));
+    m_ui->surfaceSummaryTable->setItem(row++, 1,
         new QTableWidgetItem(QString::number(numCoordinates)));
-    m_ui->surfaceSummaryTable->setItem(2, 0, new QTableWidgetItem("Extent (West-East)"));
-    m_ui->surfaceSummaryTable->setItem(2, 1, new QTableWidgetItem(
+    m_ui->surfaceSummaryTable->setItem(row, 0, new QTableWidgetItem("Extent (West-East)"));
+    m_ui->surfaceSummaryTable->setItem(row++, 1, new QTableWidgetItem(
         bounds.isEmpty() ? ""
         : QString::number(bounds.dimension(0)[0]) + "; " + QString::number(bounds.dimension(0)[1])));
-    m_ui->surfaceSummaryTable->setItem(3, 0, new QTableWidgetItem("Extent (South-North)"));
-    m_ui->surfaceSummaryTable->setItem(3, 1, new QTableWidgetItem(
+    m_ui->surfaceSummaryTable->setItem(row++, 0, new QTableWidgetItem("Extent (South-North)"));
+    m_ui->surfaceSummaryTable->setItem(row++, 1, new QTableWidgetItem(
         bounds.isEmpty() ? ""
         : QString::number(bounds.dimension(1)[0]) + "; " + QString::number(bounds.dimension(1)[1])));
 
@@ -528,6 +647,7 @@ void PCDMWidget::updateModelsList()
     {
         m_ui->savedModelsTable->setRowCount(0);
         m_ui->savedModelProperties->clear();
+        return;
     }
 
     auto && models = m_project->models();

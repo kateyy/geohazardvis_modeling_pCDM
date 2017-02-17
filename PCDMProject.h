@@ -39,8 +39,9 @@ public:
      * returned, project settings and data is modified. In this case, previous modeling results are
      * invalidated. */
     bool importHorizontalCoordinatesFrom(vtkDataSet & dataSet);
-    vtkDataSet * horizontalCoordinates();
+    vtkDataSet * horizontalCoordinatesDataSet();
     const std::array<std::vector<pCDM::t_FP>, 2> & horizontalCoordinateValues();
+    const QString & horizontalCoordinatesGeometryType() const;
 
     /** Set the Poisson's ratio. Changing nu invalidates previous modeling results. */
     void setPoissonsRatio(pCDM::t_FP nu);
@@ -79,6 +80,7 @@ private:
 
     vtkSmartPointer<vtkDataSet> m_coordsDataSet;
     std::array<std::vector<pCDM::t_FP>, 2> m_horizontalCoordsValues;
+    QString m_coordsGeometryType;
 
     std::map<QDateTime, std::unique_ptr<PCDMModel>> m_models;
 
