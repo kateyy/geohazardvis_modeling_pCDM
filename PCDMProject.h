@@ -60,10 +60,12 @@ public:
     PCDMModel * addModel(const QDateTime & timestamp = QDateTime::currentDateTime());
     bool deleteModel(const QDateTime & timestamp);
 
-    PCDMModel * model(const QString & timestamp);
-    const PCDMModel * model(const QString & timestamp) const;
     PCDMModel * model(const QDateTime & timestamp);
     const PCDMModel * model(const QDateTime & timestamp) const;
+
+    /** Store the timestamp of a specific model, e.g., the last one the user worked with. */
+    const QDateTime & lastModelTimestamp() const;
+    void setLastModelTimestamp(const QDateTime & timestamp);
 
     /** Generate a string representation of a QDateTime that can be used is file name */
     static QString timestampToString(const QDateTime & timestamp);
@@ -92,6 +94,7 @@ private:
     QString m_coordsGeometryType;
 
     std::map<QDateTime, std::unique_ptr<PCDMModel>> m_models;
+    QDateTime m_lastModelTimestamp;
 
     pCDM::t_FP m_nu;
 };

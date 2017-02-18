@@ -48,6 +48,9 @@ public:
     void cleanup();
 
 private:
+    void updateForNewCoordinates();
+
+private:
     DataMapping & m_dataMapping;
     QPointer<PCDMProject> m_project;
 

@@ -33,7 +33,7 @@ using pCDM::t_FP;
 namespace
 {
 
-static const auto uvecArrayNames = { "ue", "un", "uv" };
+static const QVector<QString> uvecArrayNames = { "ue", "un", "uv" };
 
 }
 
@@ -73,7 +73,7 @@ void PCDMVisualizationGenerator::setProject(PCDMProject * project)
     }
 
     connect(m_project, &PCDMProject::horizontalCoordinatesChanged,
-        this, &PCDMVisualizationGenerator::cleanup);
+        this, &PCDMVisualizationGenerator::updateForNewCoordinates);
 }
 
 PCDMProject * PCDMVisualizationGenerator::project()
@@ -108,8 +108,6 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     visDataSet->DeepCopy(dataSet);
     assert(visDataSet->GetPointData()->GetNumberOfArrays() == 0);
 
-    visDataSet->GetFieldData()->PassData(dataSet->GetFieldData());
-
     const auto numPoints = dataSet->GetNumberOfPoints();
 
 
@@ -117,13 +115,13 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     {
         auto array = vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>::New();
         array->SetNumberOfValues(numPoints);
-        array->SetName(arrayName);
+        array->SetName(arrayName.toUtf8().data());
         array->FillValue(0);
 
         visDataSet->GetPointData()->AddArray(array);
     }
 
-    visDataSet->GetPointData()->SetActiveScalars(*(uvecArrayNames.begin() + 2));
+    visDataSet->GetPointData()->SetActiveScalars(uvecArrayNames.last().toUtf8().data());
 
 
     static const char * dataObjectName = "pCDM Modeling Result";
@@ -195,7 +193,7 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
 
     for (; arrayNameIt != uvecArrayNames.end(); ++arrayNameIt, ++uvecIt)
     {
-        auto array = pointData.GetArray(*arrayNameIt);
+        auto array = pointData.GetArray(arrayNameIt->toUtf8().data());
         assert(array && array->GetNumberOfValues() == numPoints);
 
         for (vtkIdType i = 0; i < numPoints; ++i)
@@ -226,9 +224,14 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
     auto vis = m_renderView->visualizationFor(m_dataObject.get());
     assert(vis);
 
-    vis->colorMapping().setCurrentScalarsByName(
-        pointData.GetScalars()->GetName(),
-        true);
+    // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
+    // default array.
+    if (!uvecArrayNames.contains(vis->colorMapping().currentScalarsName()))
+    {
+        vis->colorMapping().setCurrentScalarsByName(
+            pointData.GetScalars()->GetName(),
+            true);
+    }
 
     m_renderView->render();
 }
@@ -247,4 +250,16 @@ void PCDMVisualizationGenerator::cleanup()
     qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
 
     m_dataObject = {};
+}
+
+void PCDMVisualizationGenerator::updateForNewCoordinates()
+{
+    const bool recreate = m_dataObject != nullptr;
+
+    cleanup();
+
+    if (recreate)
+    {
+        dataObject();
+    }
 }

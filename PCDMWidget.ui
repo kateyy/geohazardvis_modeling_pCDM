@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>443</width>
-    <height>562</height>
+    <width>421</width>
+    <height>598</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -163,7 +163,7 @@
           </layout>
          </widget>
          <widget class="QWidget" name="surfaceSetupPage">
-          <layout class="QFormLayout" name="formLayout">
+          <layout class="QFormLayout" name="formLayout_5">
            <property name="leftMargin">
             <number>0</number>
            </property>
@@ -241,6 +241,9 @@
                <property name="text">
                 <string>Save</string>
                </property>
+               <property name="default">
+                <bool>true</bool>
+               </property>
               </widget>
              </item>
              <item row="0" column="1">
@@ -281,7 +284,61 @@
         <string>Point Compoint Dislocation Modeling</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_6">
-        <item row="2" column="0" colspan="3">
+        <item row="1" column="1">
+         <widget class="QWidget" name="widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QPushButton" name="runButton">
+             <property name="text">
+              <string>Run</string>
+             </property>
+             <property name="default">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="saveModelButton">
+             <property name="text">
+              <string>Save Model</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="openVisualizationButton">
+             <property name="text">
+              <string>Show Results</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QWidget" name="widget_2" native="true">
+             <layout class="QGridLayout" name="gridLayout">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+             </layout>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="0" colspan="3">
          <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -293,99 +350,6 @@
            </size>
           </property>
          </spacer>
-        </item>
-        <item row="0" column="0">
-         <widget class="QGroupBox" name="pCDMPositionGroup">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="title">
-           <string>Position</string>
-          </property>
-          <layout class="QFormLayout" name="formLayout_3">
-           <item row="0" column="0">
-            <widget class="QLabel" name="label_4">
-             <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;amp;X&lt;span style=&quot; vertical-align:sub;&quot;&gt;0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="buddy">
-              <cstring>positionXSpinBox</cstring>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="positionXSpinBox">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="label_5">
-             <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;amp;Y&lt;span style=&quot; vertical-align:sub;&quot;&gt;0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-             </property>
-             <property name="buddy">
-              <cstring>positionYSpinBox</cstring>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="positionYSpinBox">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="label_6">
-             <property name="text">
-              <string>&amp;Depth</string>
-             </property>
-             <property name="buddy">
-              <cstring>depthSpinBox</cstring>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="depthSpinBox">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
         </item>
         <item row="0" column="1">
          <widget class="QGroupBox" name="pCDMRotationGroup">
@@ -564,61 +528,110 @@
           </layout>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QWidget" name="widget" native="true">
+        <item row="0" column="0">
+         <widget class="QGroupBox" name="pCDMPositionGroup">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <item>
-            <widget class="QPushButton" name="runButton">
+          <property name="title">
+           <string>Position</string>
+          </property>
+          <layout class="QFormLayout" name="formLayout_3">
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_4">
              <property name="text">
-              <string>Run</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;amp;X&lt;span style=&quot; vertical-align:sub;&quot;&gt;0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="buddy">
+              <cstring>positionXSpinBox</cstring>
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QPushButton" name="openVisualizationButton">
-             <property name="text">
-              <string>Show Results</string>
+           <item row="0" column="1">
+            <widget class="QDoubleSpinBox" name="positionXSpinBox">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>-1000000.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000000.000000000000000</double>
              </property>
             </widget>
            </item>
-           <item>
-            <widget class="QWidget" name="widget_2" native="true">
-             <layout class="QGridLayout" name="gridLayout">
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-              <item row="0" column="0">
-               <widget class="QProgressBar" name="progressBar">
-                <property name="maximum">
-                 <number>0</number>
-                </property>
-                <property name="value">
-                 <number>-1</number>
-                </property>
-                <property name="textVisible">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-             </layout>
+           <item row="1" column="0">
+            <widget class="QLabel" name="label_5">
+             <property name="text">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&amp;amp;Y&lt;span style=&quot; vertical-align:sub;&quot;&gt;0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="buddy">
+              <cstring>positionYSpinBox</cstring>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QDoubleSpinBox" name="positionYSpinBox">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>-1000000.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000000.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="label_6">
+             <property name="text">
+              <string>&amp;Depth</string>
+             </property>
+             <property name="buddy">
+              <cstring>depthSpinBox</cstring>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QDoubleSpinBox" name="depthSpinBox">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>-1000000.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000000.000000000000000</double>
+             </property>
             </widget>
            </item>
           </layout>
+         </widget>
+        </item>
+        <item row="2" column="0" colspan="2">
+         <widget class="QProgressBar" name="progressBar">
+          <property name="maximum">
+           <number>0</number>
+          </property>
+          <property name="value">
+           <number>-1</number>
+          </property>
+          <property name="textVisible">
+           <bool>false</bool>
+          </property>
          </widget>
         </item>
        </layout>
@@ -636,6 +649,9 @@
           <widget class="QTableWidget" name="savedModelsTable">
            <property name="editTriggers">
             <set>QAbstractItemView::NoEditTriggers</set>
+           </property>
+           <property name="selectionBehavior">
+            <enum>QAbstractItemView::SelectRows</enum>
            </property>
            <property name="textElideMode">
             <enum>Qt::ElideNone</enum>
@@ -672,7 +688,7 @@
             </property>
            </column>
           </widget>
-          <widget class="QTextEdit" name="savedModelProperties">
+          <widget class="QTextEdit" name="selectedModelSummary">
            <property name="readOnly">
             <bool>true</bool>
            </property>
@@ -725,6 +741,9 @@ p, li { white-space: pre-wrap; }
             <property name="text">
              <string>Reset to Selected</string>
             </property>
+            <property name="default">
+             <bool>true</bool>
+            </property>
            </widget>
           </item>
           <item row="0" column="0">
@@ -743,6 +762,34 @@ p, li { white-space: pre-wrap; }
    </layout>
   </widget>
  </widget>
+ <tabstops>
+  <tabstop>projectMenuButton</tabstop>
+  <tabstop>projectNameEdit</tabstop>
+  <tabstop>surfaceSetupButton</tabstop>
+  <tabstop>surfaceSummaryTable</tabstop>
+  <tabstop>coordsDataSetComboBox</tabstop>
+  <tabstop>poissonsRatioEdit</tabstop>
+  <tabstop>surfaceCancelButton</tabstop>
+  <tabstop>surfaceSaveButton</tabstop>
+  <tabstop>modelingTabWidget</tabstop>
+  <tabstop>positionXSpinBox</tabstop>
+  <tabstop>positionYSpinBox</tabstop>
+  <tabstop>depthSpinBox</tabstop>
+  <tabstop>omegaXSpinBox</tabstop>
+  <tabstop>omegaYSpinBox</tabstop>
+  <tabstop>omegaZSpinBox</tabstop>
+  <tabstop>dvXSpinBox</tabstop>
+  <tabstop>dvYSpinBox</tabstop>
+  <tabstop>dvZSpinBox</tabstop>
+  <tabstop>runButton</tabstop>
+  <tabstop>saveModelButton</tabstop>
+  <tabstop>openVisualizationButton</tabstop>
+  <tabstop>savedModelsTable</tabstop>
+  <tabstop>selectedModelSummary</tabstop>
+  <tabstop>renameModelButton</tabstop>
+  <tabstop>deleteModelButton</tabstop>
+  <tabstop>resetToSelectedButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

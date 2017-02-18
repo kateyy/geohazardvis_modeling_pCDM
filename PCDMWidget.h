@@ -52,16 +52,19 @@ private:
     void updateSurfaceSummary();
 
     void runModel();
+    void saveModelDialog();
     void showVisualization();
 
     void sourceParametersToUi(const pCDM::PointCDMParameters & parameters);
     pCDM::PointCDMParameters sourceParametersFromUi() const;
 
     void updateModelsList();
-    //void updateModelsProperties();
-    //void deleteSelectedModel();
-    //void resetToSelectedModel();
-    //void renameSelectedModel();
+    PCDMModel * selectedModel();
+    void selectModel(const QDateTime & timestamp);
+    void updateModelSummary();
+    void renameSelectedModel();
+    void resetToSelectedModel();
+    void deleteSelectedModel();
 
 private:
     const QString m_settingsGroup;
@@ -79,5 +82,4 @@ private:
     std::unique_ptr<PCDMVisualizationGenerator> m_visGenerator;
 
     std::unique_ptr<PCDMProject> m_project;
-    QDateTime m_lastModelTimestamp;
 };

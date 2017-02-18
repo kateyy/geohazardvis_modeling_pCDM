@@ -6,6 +6,7 @@
 
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QMenu>
 #include <QMessageBox>
 #include <QSettings>
@@ -16,6 +17,7 @@
 
 #include <core/CoordinateSystems.h>
 #include <core/data_objects/CoordinateTransformableDataObject.h>
+#include <core/utility/conversions.h>
 #include <core/utility/DataExtent.h>
 #include <core/utility/DataSetFilter.h>
 #include <core/utility/qthelper.h>
@@ -26,6 +28,13 @@
 #include "PCDMVisualizationGenerator.h"
 #include "PCDMWidget_StateHelper.h"
 
+
+namespace
+{
+
+const auto degreeSign = QChar(0xb0);
+
+}
 
 using pCDM::t_FP;
 
@@ -44,6 +53,7 @@ PCDMWidget::PCDMWidget(
     , m_visGenerator{ std::make_unique<PCDMVisualizationGenerator>(pluginInterface.dataMapping()) }
 {
     m_ui->setupUi(this);
+    m_ui->savedModelsTable->sortByColumn(0, Qt::SortOrder::DescendingOrder);
 
     m_projectMenu = std::make_unique<QMenu>();
     auto projectNewAction = m_projectMenu->addAction("&New");
@@ -86,7 +96,14 @@ PCDMWidget::PCDMWidget(
     connect(m_ui->surfaceSaveButton, &QAbstractButton::clicked, this, &PCDMWidget::saveSurfaceParameters);
 
     connect(m_ui->runButton, &QAbstractButton::clicked, this, &PCDMWidget::runModel);
+    connect(m_ui->saveModelButton, &QAbstractButton::clicked, this, &PCDMWidget::saveModelDialog);
     connect(m_ui->openVisualizationButton, &QAbstractButton::clicked, this, &PCDMWidget::showVisualization);
+
+    connect(m_ui->savedModelsTable, &QTableWidget::itemSelectionChanged, this, &PCDMWidget::updateModelSummary);
+    connect(m_ui->renameModelButton, &QAbstractButton::clicked, this, &PCDMWidget::renameSelectedModel);
+    connect(m_ui->deleteModelButton, &QAbstractButton::clicked, this, &PCDMWidget::deleteSelectedModel);
+    connect(m_ui->resetToSelectedButton, &QAbstractButton::clicked, this, &PCDMWidget::resetToSelectedModel);
+    connect(m_ui->savedModelsTable, &QTableWidget::doubleClicked, this, &PCDMWidget::resetToSelectedModel);
 
     setupStateMachine();
 
@@ -242,16 +259,17 @@ void PCDMWidget::openProjectDialog()
     {
         return;
     }
+    const auto rootFolder = QFileInfo(newPath).absoluteDir().path();
 
     QString errorMessage;
-    if (!PCDMProject::checkFolderIsProject(newPath, &errorMessage))
+    if (!PCDMProject::checkFolderIsProject(rootFolder, &errorMessage))
     {
         QMessageBox::warning(this, "Project Selection",
             "Cannot open the selected project. " + errorMessage);
         return;
     }
 
-    loadProjectFrom(QFileInfo(newPath).absoluteDir().path());
+    loadProjectFrom(rootFolder);
 }
 
 void PCDMWidget::newProjectDialog()
@@ -319,8 +337,6 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
 
         const auto toBeDeleted = std::move(m_project);
 
-        // TODO store GUI session
-
         m_visGenerator->setProject(nullptr);
 
         updateSurfaceSummary();
@@ -343,11 +359,6 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
     m_project = std::make_unique<PCDMProject>(rootFolder);
     m_ui->projectNameEdit->setText(QDir(rootFolder).dirName());
 
-    if (!m_project->models().empty())
-    {
-        m_lastModelTimestamp = m_project->models().rbegin()->first;
-    }
-
     m_visGenerator->setProject(m_project.get());
     m_visGenerator->dataObject();   // Initialize the preview data and pass it to the UI
 
@@ -363,9 +374,17 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
     }
 
     updateModelsList();
-
-    // project/model preview data set to ui
-    // (force) Update preview
+    
+    if (auto model = m_project->model(m_project->lastModelTimestamp()))
+    {
+        selectModel(m_project->lastModelTimestamp());
+        resetToSelectedModel();
+    }
+    else
+    {
+        // no previous model -> clear UI source parameters
+        sourceParametersToUi({});
+    }
 
     prependRecentProject(rootFolder);
     saveSettings();
@@ -398,6 +417,7 @@ void PCDMWidget::prepareSetupSurfaceParameters()
         const auto previousSelection = variantToDataObjectPtr(m_ui->coordsDataSetComboBox->currentData());
         int restoredSelectionIndex = -1;
         m_ui->coordsDataSetComboBox->clear();
+        m_ui->coordsDataSetComboBox->addItem("");
 
         for (int i = 0; i < filteredList.size(); ++i)
         {
@@ -448,50 +468,59 @@ void PCDMWidget::saveSurfaceParameters()
 
     static const QString title = "Surface Coordinates Setup";
 
-    if (m_ui->coordsDataSetComboBox->count() == 0)
+    bool keepCurrentGeometry = false;
+    auto * const selectedDataObject = variantToDataObjectPtr(m_ui->coordsDataSetComboBox->currentData());
+    if (!selectedDataObject && m_project->horizontalCoordinatesDataSet())
+    {
+        keepCurrentGeometry = true;
+    }
+
+    if (!keepCurrentGeometry && (m_ui->coordsDataSetComboBox->count() == 1))
     {
         QMessageBox::information(this, title,
             "Please load or import data sets with point coordinates to continue with the modeling setup.");
         return;
     }
 
-    auto * const selectedDataObject = variantToDataObjectPtr(m_ui->coordsDataSetComboBox->currentData());
-
-    if (!selectedDataObject)
+    if (!keepCurrentGeometry && !selectedDataObject)
     {
         QMessageBox::information(this, title,
-            "Please select a data set that defined horizontal coordinates for the modeling setup.");
+            "Please select a data set that defines horizontal coordinates for the modeling setup.");
         return;
     }
 
-    assert(dynamic_cast<CoordinateTransformableDataObject *>(selectedDataObject));
-    auto transformable = static_cast<CoordinateTransformableDataObject *>(selectedDataObject);
-    auto coordinateSystem = transformable->coordinateSystem();
-    coordinateSystem.type = CoordinateSystemType::metricLocal;
-    auto localDataSet = transformable->coordinateTransformedDataSet(coordinateSystem);
-
-    if (!localDataSet)
+    if (!keepCurrentGeometry)
     {
-        QMessageBox::warning(this, title,
-            "The selected data set (" + selectedDataObject->name() + ") cannot be transformed to "
-            "local metric coordinates. Please select a compatible data set.");
-        return;
-    }
+        assert(dynamic_cast<CoordinateTransformableDataObject *>(selectedDataObject));
+        auto transformable = static_cast<CoordinateTransformableDataObject *>(selectedDataObject);
+        auto coordinateSystem = transformable->coordinateSystem();
+        coordinateSystem.type = CoordinateSystemType::metricLocal;
+        auto localDataSet = transformable->coordinateTransformedDataSet(coordinateSystem);
 
-    if (localDataSet->GetNumberOfPoints() == 0)
-    {
-        QMessageBox::warning(this, title,
-            "The selected data set (" + selectedDataObject->name() + ") does not contain point coordinates.");
-        return;
-    }
+        if (!localDataSet)
+        {
+            QMessageBox::warning(this, title,
+                "The selected data set (" + selectedDataObject->name() + ") cannot be transformed to "
+                "local metric coordinates. Please select a compatible data set.");
+            return;
+        }
 
-    if (!m_project->importHorizontalCoordinatesFrom(*localDataSet))
-    {
-        QMessageBox::warning(this, title,
-            "Could not import coordinates from the selected data set (" + selectedDataObject->name() + ")."
-            "Maybe the data set type is not supported, or the data set is empty.");
-        return;
+        if (localDataSet->GetNumberOfPoints() == 0)
+        {
+            QMessageBox::warning(this, title,
+                "The selected data set (" + selectedDataObject->name() + ") does not contain point coordinates.");
+            return;
+        }
+
+        if (!m_project->importHorizontalCoordinatesFrom(*localDataSet))
+        {
+            QMessageBox::warning(this, title,
+                "Could not import coordinates from the selected data set (" + selectedDataObject->name() + ")."
+                "Maybe the data set type is not supported, or the data set is empty.");
+            return;
+        }
     }
+    assert(m_project->horizontalCoordinatesDataSet());
 
     m_project->setPoissonsRatio(static_cast<pCDM::t_FP>(m_ui->poissonsRatioEdit->value()));
 
@@ -557,8 +586,8 @@ void PCDMWidget::updateSurfaceSummary()
         {
             auto && latLong = coords.referencePointLatLong;
             referencePointStr =
-                QString::number(latLong[0]) + QChar(0xb0) + (latLong[0] >= 0 ? "N" : "S") + " "
-                + QString::number(latLong[1]) + QChar(0xb0) + (latLong[1] >= 0 ? "E" : "W")
+                QString::number(latLong[0]) + degreeSign + (latLong[0] >= 0 ? "N" : "S") + " "
+                + QString::number(latLong[1]) + degreeSign + (latLong[1] >= 0 ? "E" : "W")
                 + " (" + coords.geographicSystem + ")";
             
             const auto bounds2D = bounds.convertTo<2>();
@@ -577,7 +606,7 @@ void PCDMWidget::updateSurfaceSummary()
         addRow("Local Reference", relativeReferenceStr);
     }
 
-    m_ui->surfaceSummaryTable->resizeColumnsToContents();
+    m_ui->surfaceSummaryTable->resizeColumnToContents(0);
     m_ui->surfaceSummaryTable->resizeRowsToContents();
 }
 
@@ -599,7 +628,17 @@ void PCDMWidget::runModel()
         return;
     }
 
-    auto modelPtr = m_project->addModel();
+    PCDMModel * modelPtr = nullptr;
+    auto lastModel = m_project->model(m_project->lastModelTimestamp());
+    if (lastModel && (lastModel->parameters() == sourceParams))
+    {
+        modelPtr = lastModel;
+    }
+    else
+    {
+        modelPtr = m_project->addModel();
+    }
+
     if (!modelPtr)
     {
         QMessageBox::warning(this, title,
@@ -608,9 +647,9 @@ void PCDMWidget::runModel()
         return;
     }
     auto & model = *modelPtr;
-    m_lastModelTimestamp = model.timestamp();
-
     model.setParameters(sourceParams);
+
+    m_project->setLastModelTimestamp(model.timestamp());
 
     model.requestResultsAsync();
     emit m_stateHelper->computingModel();
@@ -630,6 +669,40 @@ void PCDMWidget::runModel()
     m_visGenerator->showModel(model);
 }
 
+void PCDMWidget::saveModelDialog()
+{
+    if (!m_project)
+    {
+        return;
+    }
+
+    const auto uiParams = sourceParametersFromUi();
+
+    QString modelName;
+
+    // Check if the previously run/saved model is still represented in the UI.
+    // Otherwise, add a new model to the project.
+    const auto previousModel = m_project->model(m_project->lastModelTimestamp());
+    if (previousModel && (previousModel->parameters() == uiParams))
+    {
+        modelName = previousModel->name();
+    }
+
+    bool okay;
+    modelName = QInputDialog::getText(this,
+        "Model Name", "Set a name for the current model",
+        QLineEdit::Normal, modelName, &okay);
+    if (!okay)
+    {
+        return;
+    }
+
+    auto model = previousModel ? previousModel : m_project->addModel();
+    model->setName(modelName);
+
+    updateModelsList();
+}
+
 void PCDMWidget::showVisualization()
 {
     if (!m_project)
@@ -639,12 +712,7 @@ void PCDMWidget::showVisualization()
 
     m_visGenerator->openRenderView();
 
-    if (!m_lastModelTimestamp.isValid())
-    {
-        return;
-    }
-
-    auto model = m_project->model(m_lastModelTimestamp);
+    auto model = m_project->model(m_project->lastModelTimestamp());
     if (!model)
     {
         return;
@@ -683,10 +751,24 @@ pCDM::PointCDMParameters PCDMWidget::sourceParametersFromUi() const
 
 void PCDMWidget::updateModelsList()
 {
-    if (!m_project)
+    QDateTime lastSelection;
+    int lastSelectionIndex = -1;
     {
-        m_ui->savedModelsTable->setRowCount(0);
-        m_ui->savedModelProperties->clear();
+        auto rows = m_ui->savedModelsTable->selectionModel()->selectedRows();
+        if (!rows.isEmpty())
+        {
+            lastSelectionIndex = rows.first().row();
+            lastSelection = m_ui->savedModelsTable->item(lastSelectionIndex, 0)->data(Qt::DisplayRole).toDateTime();
+        }
+    }
+
+    const QSignalBlocker signalBlocker(m_ui->savedModelsTable);
+
+    m_ui->savedModelsTable->clearContents();
+
+    if (!m_project || m_project->models().empty())
+    {
+        updateModelSummary();
         return;
     }
 
@@ -695,16 +777,174 @@ void PCDMWidget::updateModelsList()
         ? std::numeric_limits<int>::max() : static_cast<int>(models.size());
 
     m_ui->savedModelsTable->setRowCount(numModels);
+
+    int restoredSelectionIndex = -1;
+    QTableWidgetItem * selectedItem = {};
     
     auto it = models.begin();
-    for (int i = 0; i < numModels; ++i)
+    for (int i = 0; i < numModels; ++i, ++it)
     {
         auto timestampItem = new QTableWidgetItem();
         timestampItem->setData(Qt::DisplayRole, it->first);
         m_ui->savedModelsTable->setItem(i, 0, timestampItem);
         m_ui->savedModelsTable->setItem(i, 1, new QTableWidgetItem(it->second->name()));
+
+        if (lastSelection == it->first)
+        {
+            restoredSelectionIndex = i;
+            selectedItem = timestampItem;
+        }
     }
 
-    m_ui->savedModelsTable->resizeColumnsToContents();
+    if (restoredSelectionIndex == -1)
+    {
+        restoredSelectionIndex = std::min(lastSelectionIndex, numModels - 1);
+    }
+
+    m_ui->savedModelsTable->selectRow(restoredSelectionIndex);
+    m_ui->savedModelsTable->resizeColumnToContents(0);
     m_ui->savedModelsTable->resizeRowsToContents();
+    if (selectedItem)
+    {
+        m_ui->savedModelsTable->scrollToItem(selectedItem);
+    }
+
+    updateModelSummary();
+}
+
+PCDMModel * PCDMWidget::selectedModel()
+{
+    const auto selection = m_ui->savedModelsTable->selectionModel()->selectedRows();
+    if (selection.isEmpty())
+    {
+        return{};
+    }
+    assert(m_project);
+
+    const int row = selection.first().row();
+    const auto timestamp = m_ui->savedModelsTable->item(row, 0)->data(Qt::DisplayRole).toDateTime();
+    return m_project->model(timestamp);
+}
+
+void PCDMWidget::selectModel(const QDateTime & timestamp)
+{
+    if (!m_project)
+    {
+        return;
+    }
+
+    for (int r = 0; r < m_ui->savedModelsTable->rowCount(); ++r)
+    {
+        if (timestamp ==
+            m_ui->savedModelsTable->item(r, 0)->data(Qt::DisplayRole).toDateTime())
+        {
+            m_ui->savedModelsTable->selectRow(r);
+            return;
+        }
+    }
+
+}
+
+void PCDMWidget::updateModelSummary()
+{
+    if (!m_project)
+    {
+        return;
+    }
+
+    const auto selection = m_ui->savedModelsTable->selectionModel()->selectedRows();
+    int row = selection.isEmpty() ? -1 : selection.first().row();
+    if (row < 0)
+    {
+        m_ui->selectedModelSummary->clear();
+        return;
+    }
+
+    const auto timestamp = m_ui->savedModelsTable->item(row, 0)->data(Qt::DisplayRole).toDateTime();
+    auto modelPtr = m_project->model(timestamp);
+    assert(modelPtr);
+    auto & model = *modelPtr;
+    auto && params = model.parameters();
+
+    QString previewText;
+    QTextStream stream(&previewText);
+    stream
+        << "Creation date: " << timestamp.toString() << endl
+        << "Name: " << model.name() << endl
+        << "Results stored: " << (model.hasResults() ? "yes" : "no") << endl
+        << endl
+        << "Horizontal position: " << arrayToString(params.horizontalCoord) << endl
+        << "Depth: " << params.depth << endl
+        << "Rotation: " << arrayToString(params.omega, ", ", {}, degreeSign) << endl
+        << "Potencies: " << arrayToString(params.dv) << endl;
+
+    m_ui->selectedModelSummary->setText(previewText);
+}
+
+void PCDMWidget::renameSelectedModel()
+{
+    const auto model = selectedModel();
+
+    if (!model)
+    {
+        return;
+    }
+
+    bool okay;
+    const auto modelName = QInputDialog::getText(this,
+        "Model Name", "Set a name for the current model",
+        QLineEdit::Normal, model->name(), &okay);
+    if (!okay)
+    {
+        return;
+    }
+
+    model->setName(modelName);
+
+    updateModelsList();
+}
+
+void PCDMWidget::resetToSelectedModel()
+{
+    const auto model = selectedModel();
+    if (!model)
+    {
+        return;
+    }
+
+    sourceParametersToUi(model->parameters());
+
+    m_ui->modelingTabWidget->setCurrentIndex(0);
+}
+
+void PCDMWidget::deleteSelectedModel()
+{
+    const auto selection = m_ui->savedModelsTable->selectionModel()->selectedRows();
+    if (selection.isEmpty())
+    {
+        return;
+    }
+    assert(m_project);
+
+    const int count = selection.size();
+
+    if (QMessageBox::question(this, "pCDM Project",
+        count == 1
+        ? "Do you want to delete the selected model?"
+        : "Do you want to delete " + QString::number(count) + " selected models?")
+        != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    const QSignalBlocker signalBlocker(m_ui->savedModelsTable);
+
+    for (auto && item : selection)
+    {
+        const int row = item.row();
+        const auto timestamp = m_ui->savedModelsTable->item(row, 0)->data(Qt::DisplayRole).toDateTime();
+        m_project->deleteModel(timestamp);
+    }
+
+    updateModelsList();
 }

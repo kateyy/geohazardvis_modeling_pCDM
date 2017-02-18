@@ -66,6 +66,7 @@ PCDMProject::PCDMProject(const QString & rootFolder)
 
     readSettings([this] (const QSettings & settings)
     {
+        m_lastModelTimestamp = settings.value("MostRecentlyUsedModel").toDateTime();
         m_nu = settings.value("Material/nu").value<t_FP>();
     });
 
@@ -381,26 +382,6 @@ bool PCDMProject::deleteModel(const QDateTime & timestamp)
     return true;
 }
 
-PCDMModel * PCDMProject::model(const QString & timestamp)
-{
-    const auto ts = stringToTimestamp(timestamp);
-    if (!ts.isValid())
-    {
-        return nullptr;
-    }
-    return model(ts);
-}
-
-const PCDMModel * PCDMProject::model(const QString & timestamp) const
-{
-    const auto ts = stringToTimestamp(timestamp);
-    if (!ts.isValid())
-    {
-        return nullptr;
-    }
-    return model(ts);
-}
-
 PCDMModel * PCDMProject::model(const QDateTime & timestamp)
 {
     const auto it = m_models.find(timestamp);
@@ -421,6 +402,26 @@ const PCDMModel * PCDMProject::model(const QDateTime & timestamp) const
     }
 
     return it->second.get();
+}
+
+const QDateTime & PCDMProject::lastModelTimestamp() const
+{
+    return m_lastModelTimestamp;
+}
+
+void PCDMProject::setLastModelTimestamp(const QDateTime & timestamp)
+{
+    if (m_lastModelTimestamp == timestamp)
+    {
+        return;
+    }
+
+    m_lastModelTimestamp = timestamp;
+
+    accessSettings([&timestamp] (QSettings & settings)
+    {
+        settings.setValue("MostRecentlyUsedModel", timestamp);
+    });
 }
 
 QString PCDMProject::timestampToString(const QDateTime & timestamp)
@@ -480,8 +481,7 @@ void PCDMProject::readCoordinates()
     readSettings([&hasValidData, &isGrid, &isPoints, &geometryType, &coordsSpec]
     (const QSettings & settings)
     {
-        auto validProp = settings.value("Surface/ValidData");
-        if (!validProp.isValid() || !validProp.toBool())
+        if (!settings.value("Surface/ValidData", false).toBool())
         {
             return;
         }
@@ -490,12 +490,11 @@ void PCDMProject::readCoordinates()
         coordsSpec =
             settings.value("Surface/CoordinateSystem").value<ReferencedCoordinateSystemSpecification>();
 
-        const auto typeProp = settings.value("Surface/DataType");
-        if (!typeProp.isValid())
+        geometryType = settings.value("Surface/DataType").toString();
+        if (geometryType.isEmpty())
         {
             return;
         }
-        geometryType = typeProp.toString();
         if (geometryType == "Regular Grid")
         {
             isGrid = true;
