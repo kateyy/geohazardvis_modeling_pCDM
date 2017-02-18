@@ -148,66 +148,15 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     return m_dataObject.get();
 }
 
-void PCDMVisualizationGenerator::showModel(PCDMModel & model)
+void PCDMVisualizationGenerator::showDataObject()
 {
-    if (!m_project || &model.project() != m_project)
+    const auto data = dataObject();
+    if (!data)
     {
         return;
     }
 
-    if (!model.hasResults())
-    {
-        return;
-    }
-
-    auto dataSet = m_project->horizontalCoordinatesDataSet();
-    if (!dataSet)
-    {
-        return;
-    }
-
-    const auto & uvec = model.results();
-    assert(uvec.size() == 3 && uvec[0].size() == uvec[1].size() && uvec[1].size() == uvec[2].size());
-    const auto numDataPoints = static_cast<vtkIdType>(uvec[0].size());
-
-    if (dataSet->GetNumberOfPoints() != numDataPoints)
-    {
-        qDebug() << "Coordinate and uvec result data set have different number of data points.";
-        return;
-    }
-
-    if (!dataObject())
-    {
-        return;
-    }
-
-    assert(m_dataObject);
-
-    const auto eventDeferral = ScopedEventDeferral(*m_dataObject);
-
-    const auto numPoints = m_dataObject->numberOfPoints();
-    auto & pointData = *m_dataObject->dataSet()->GetPointData();
-
-    auto arrayNameIt = uvecArrayNames.begin();
-    auto uvecIt = uvec.begin();
-
-    for (; arrayNameIt != uvecArrayNames.end(); ++arrayNameIt, ++uvecIt)
-    {
-        auto array = pointData.GetArray(arrayNameIt->toUtf8().data());
-        assert(array && array->GetNumberOfValues() == numPoints);
-
-        for (vtkIdType i = 0; i < numPoints; ++i)
-        {
-            array->SetComponent(i, 0, (*uvecIt)[static_cast<size_t>(i)]);
-        }
-        array->Modified();
-    }
-
-    qApp->processEvents();
-    if (!m_renderView)
-    {
-        return;
-    }
+    openRenderView();
 
     QList<DataObject *> incompatible;
     m_renderView->showDataObjects({ m_dataObject.get() }, incompatible);
@@ -220,17 +169,96 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         m_renderView->showDataObjects({ m_dataObject.get() }, incompatible);
         assert(incompatible.isEmpty());
     }
+}
+
+void PCDMVisualizationGenerator::showModel(PCDMModel & model)
+{
+    if (!m_project || &model.project() != m_project)
+    {
+        return;
+    }
+
+    auto dataSet = m_project->horizontalCoordinatesDataSet();
+    if (!dataSet || !dataObject())
+    {
+        return;
+    }
+    assert(m_dataObject && dataSet);
+
+    const auto eventDeferral = ScopedEventDeferral(*m_dataObject);
+
+    const auto numPoints = m_dataObject->numberOfPoints();
+    auto & pointData = *m_dataObject->dataSet()->GetPointData();
+
+    bool validResults = false;
+    while (model.hasResults())
+    {
+        const auto & uvec = model.results();
+        assert(uvec.size() == 3 && uvec[0].size() == uvec[1].size() && uvec[1].size() == uvec[2].size());
+
+        if (numPoints != static_cast<vtkIdType>(uvec[0].size()))
+        {
+            qDebug() << "Coordinate and uvec result data set have different number of data points.";
+            break;
+        }
+
+        auto arrayNameIt = uvecArrayNames.begin();
+        auto uvecIt = uvec.begin();
+
+        for (; arrayNameIt != uvecArrayNames.end(); ++arrayNameIt, ++uvecIt)
+        {
+            auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
+                pointData.GetArray(arrayNameIt->toUtf8().data()));
+            assert(array && array->GetNumberOfValues() == numPoints);
+
+            for (vtkIdType i = 0; i < numPoints; ++i)
+            {
+                array->SetTypedComponent(i, 0, (*uvecIt)[static_cast<size_t>(i)]);
+            }
+            array->Modified();
+        }
+
+        validResults = true;
+        break;
+    }
+
+    if (!validResults)
+    {
+        for (auto && name : uvecArrayNames)
+        {
+            auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
+                pointData.GetArray(name.toUtf8().data()));
+            assert(array && array->GetNumberOfValues() == numPoints);
+
+            array->FillValue(static_cast<t_FP>(0));
+            array->Modified();
+        }
+    }
+
+    showDataObject();
+    if (!m_renderView)
+    {
+        return;
+    }
 
     auto vis = m_renderView->visualizationFor(m_dataObject.get());
     assert(vis);
 
     // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
     // default array.
-    if (!uvecArrayNames.contains(vis->colorMapping().currentScalarsName()))
+    if (validResults &&
+        (!vis->colorMapping().isEnabled()
+        || !uvecArrayNames.contains(vis->colorMapping().currentScalarsName())))
     {
         vis->colorMapping().setCurrentScalarsByName(
             pointData.GetScalars()->GetName(),
             true);
+    }
+
+    // If there are no valid results, make sure that the invalidated/zero values are not mapped.
+    if (!validResults && uvecArrayNames.contains(vis->colorMapping().currentScalarsName()))
+    {
+        vis->colorMapping().setEnabled(false);
     }
 
     m_renderView->render();

@@ -666,6 +666,7 @@ void PCDMWidget::runModel()
         return;
     }
 
+    updateModelsList();
     m_visGenerator->showModel(model);
 }
 
@@ -710,14 +711,14 @@ void PCDMWidget::showVisualization()
         return;
     }
 
-    m_visGenerator->openRenderView();
-
     auto model = m_project->model(m_project->lastModelTimestamp());
     if (!model)
     {
+        m_visGenerator->showDataObject();
         return;
     }
 
+    m_visGenerator->openRenderView();
     m_visGenerator->showModel(*model);
 }
 
@@ -754,7 +755,7 @@ void PCDMWidget::updateModelsList()
     QDateTime lastSelection;
     int lastSelectionIndex = -1;
     {
-        auto rows = m_ui->savedModelsTable->selectionModel()->selectedRows();
+        const auto rows = m_ui->savedModelsTable->selectionModel()->selectedRows();
         if (!rows.isEmpty())
         {
             lastSelectionIndex = rows.first().row();
@@ -765,6 +766,7 @@ void PCDMWidget::updateModelsList()
     const QSignalBlocker signalBlocker(m_ui->savedModelsTable);
 
     m_ui->savedModelsTable->clearContents();
+    m_ui->savedModelsTable->setRowCount(0);
 
     if (!m_project || m_project->models().empty())
     {
@@ -777,9 +779,6 @@ void PCDMWidget::updateModelsList()
         ? std::numeric_limits<int>::max() : static_cast<int>(models.size());
 
     m_ui->savedModelsTable->setRowCount(numModels);
-
-    int restoredSelectionIndex = -1;
-    QTableWidgetItem * selectedItem = {};
     
     auto it = models.begin();
     for (int i = 0; i < numModels; ++i, ++it)
@@ -788,11 +787,22 @@ void PCDMWidget::updateModelsList()
         timestampItem->setData(Qt::DisplayRole, it->first);
         m_ui->savedModelsTable->setItem(i, 0, timestampItem);
         m_ui->savedModelsTable->setItem(i, 1, new QTableWidgetItem(it->second->name()));
+    }
 
-        if (lastSelection == it->first)
+    // Search for the previous selection in the newly setup table.
+    // NOTE: this cannot be done in the first loop, as the final index of an inserted item depends
+    // on the current sort order selected in the UI.
+    int restoredSelectionIndex = -1;
+    if (lastSelection.isValid())
+    {
+        for (int i = 0; i < numModels; ++i)
         {
-            restoredSelectionIndex = i;
-            selectedItem = timestampItem;
+            if (lastSelection ==
+                m_ui->savedModelsTable->item(i, 0)->data(Qt::UserRole).toDateTime())
+            {
+                restoredSelectionIndex = i;
+                break;
+            }
         }
     }
 
@@ -802,12 +812,14 @@ void PCDMWidget::updateModelsList()
     }
 
     m_ui->savedModelsTable->selectRow(restoredSelectionIndex);
+    if (restoredSelectionIndex != -1)
+    {
+        m_ui->savedModelsTable->scrollTo(
+            m_ui->savedModelsTable->rootIndex().child(restoredSelectionIndex, 0));
+    }
+
     m_ui->savedModelsTable->resizeColumnToContents(0);
     m_ui->savedModelsTable->resizeRowsToContents();
-    if (selectedItem)
-    {
-        m_ui->savedModelsTable->scrollToItem(selectedItem);
-    }
 
     updateModelSummary();
 }
@@ -866,6 +878,10 @@ void PCDMWidget::updateModelSummary()
     auto & model = *modelPtr;
     auto && params = model.parameters();
 
+    auto && coordsSpec = m_project->coordinateSystem();
+    auto && metricUnit = coordsSpec.unitOfMeasurement;
+    auto && xy = params.horizontalCoord;
+
     QString previewText;
     QTextStream stream(&previewText);
     stream
@@ -873,8 +889,10 @@ void PCDMWidget::updateModelSummary()
         << "Name: " << model.name() << endl
         << "Results stored: " << (model.hasResults() ? "yes" : "no") << endl
         << endl
-        << "Horizontal position: " << arrayToString(params.horizontalCoord) << endl
-        << "Depth: " << params.depth << endl
+        << "Horizontal position: "
+            << std::abs(xy[1]) << metricUnit << " " << (xy[1] >= 0 ? "North" : "South") << ", "
+            << std::abs(xy[0]) << metricUnit << " " << (xy[0] >= 0 ? "East" : "West") << endl
+        << "Depth: " << params.depth << metricUnit << endl
         << "Rotation: " << arrayToString(params.omega, ", ", {}, degreeSign) << endl
         << "Potencies: " << arrayToString(params.dv) << endl;
 
@@ -913,6 +931,8 @@ void PCDMWidget::resetToSelectedModel()
     }
 
     sourceParametersToUi(model->parameters());
+    m_project->setLastModelTimestamp(model->timestamp());
+    m_visGenerator->showModel(*model);
 
     m_ui->modelingTabWidget->setCurrentIndex(0);
 }

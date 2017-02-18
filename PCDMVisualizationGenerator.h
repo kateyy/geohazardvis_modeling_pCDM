@@ -39,6 +39,12 @@ public:
      */
     DataObject * dataObject();
     /**
+     * Show the data object in the preview renderer, without visualizing modeling results.
+     * This does not modify the current color mapping, it only ensures that the render view and
+     * data object are visible.
+     */
+    void showDataObject();
+    /**
      * Update the attribute arrays of dataObject() for the selected model.
      * If a render view is opened, this function will add the data object to the view and configure
      * color mappings to visualize "uv" values.
