@@ -428,12 +428,12 @@ QString PCDMProject::timestampToString(const QDateTime & timestamp)
 {
     assert(timestamp.isValid());
 
-    return timestamp.toString("yyyy-MM-dd HH-mm-ss.zzzz");
+    return timestamp.toString("yyyy-MM-dd HH-mm-ss.zzz");
 }
 
 QDateTime PCDMProject::stringToTimestamp(const QString & timestamp)
 {
-    return QDateTime::fromString(timestamp, "yyyy-MM-dd HH-mm-ss.zzzz");
+    return QDateTime::fromString(timestamp, "yyyy-MM-dd HH-mm-ss.zzz");
 }
 
 void PCDMProject::readModels()
