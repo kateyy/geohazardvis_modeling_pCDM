@@ -1,5 +1,8 @@
 #include "pCDM_types.h"
 
+#include <cmath>
+#include <limits>
+
 #include <QString>
 
 
@@ -38,10 +41,30 @@ bool PointCDMParameters::isValid(QString * errorMessage) const
 
 bool PointCDMParameters::operator==(const PointCDMParameters & other) const
 {
-    return horizontalCoord == other.horizontalCoord
-        && depth == other.depth
-        && omega == other.omega
-        && dv == other.dv;
+    const auto thisValues = {
+        &horizontalCoord[0], &horizontalCoord[1],
+        &depth,
+        &omega[0], &omega[1], &omega[2],
+        &dv[0], &dv[1], &dv[2]
+    };
+    const auto otherValues = {
+        &other.horizontalCoord[0], &other.horizontalCoord[1],
+        &other.depth,
+        &other.omega[0], &other.omega[1], &other.omega[2],
+        &other.dv[0], &other.dv[1], &other.dv[2]
+    };
+
+    auto thisIt = thisValues.begin();
+    auto otherIt = otherValues.begin();
+    for (; thisIt != thisValues.end(); ++thisIt, ++otherIt)
+    {
+        if (std::abs(**thisIt - **otherIt) > std::numeric_limits<t_FP>::epsilon())
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 bool PointCDMParameters::operator!=(const PointCDMParameters & other) const
