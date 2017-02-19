@@ -752,6 +752,7 @@ pCDM::PointCDMParameters PCDMWidget::sourceParametersFromUi() const
 
 void PCDMWidget::updateModelsList()
 {
+    m_ui->savedModelsTable->setSortingEnabled(false);
     QDateTime lastSelection;
     int lastSelectionIndex = -1;
     {
@@ -781,28 +782,17 @@ void PCDMWidget::updateModelsList()
     m_ui->savedModelsTable->setRowCount(numModels);
     
     auto it = models.begin();
+    int restoredSelectionIndex = -1;
     for (int i = 0; i < numModels; ++i, ++it)
     {
         auto timestampItem = new QTableWidgetItem();
         timestampItem->setData(Qt::DisplayRole, it->first);
         m_ui->savedModelsTable->setItem(i, 0, timestampItem);
         m_ui->savedModelsTable->setItem(i, 1, new QTableWidgetItem(it->second->name()));
-    }
 
-    // Search for the previous selection in the newly setup table.
-    // NOTE: this cannot be done in the first loop, as the final index of an inserted item depends
-    // on the current sort order selected in the UI.
-    int restoredSelectionIndex = -1;
-    if (lastSelection.isValid())
-    {
-        for (int i = 0; i < numModels; ++i)
+        if (lastSelection == it->first)
         {
-            if (lastSelection ==
-                m_ui->savedModelsTable->item(i, 0)->data(Qt::UserRole).toDateTime())
-            {
-                restoredSelectionIndex = i;
-                break;
-            }
+            restoredSelectionIndex = i;
         }
     }
 
@@ -817,6 +807,8 @@ void PCDMWidget::updateModelsList()
         m_ui->savedModelsTable->scrollTo(
             m_ui->savedModelsTable->rootIndex().child(restoredSelectionIndex, 0));
     }
+
+    m_ui->savedModelsTable->setSortingEnabled(true);
 
     m_ui->savedModelsTable->resizeColumnToContents(0);
     m_ui->savedModelsTable->resizeRowsToContents();

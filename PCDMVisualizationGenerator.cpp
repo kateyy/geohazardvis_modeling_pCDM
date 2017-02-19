@@ -208,7 +208,7 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         for (; arrayNameIt != uvecArrayNames.end(); ++arrayNameIt, ++uvecIt)
         {
             auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
-                pointData.GetArray(arrayNameIt->toUtf8().data()));
+                pointData.GetAbstractArray(arrayNameIt->toUtf8().data()));
             assert(array && array->GetNumberOfValues() == numPoints);
 
             for (vtkIdType i = 0; i < numPoints; ++i)
@@ -227,7 +227,7 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         for (auto && name : uvecArrayNames)
         {
             auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
-                pointData.GetArray(name.toUtf8().data()));
+                pointData.GetAbstractArray(name.toUtf8().data()));
             assert(array && array->GetNumberOfValues() == numPoints);
 
             array->FillValue(static_cast<t_FP>(0));
