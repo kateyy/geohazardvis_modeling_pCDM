@@ -63,7 +63,7 @@ configure_cxx_target(${staticTarget} AUX_PLUGIN_TARGET)
 
 # Create a plugin library and statically link the actual plugin logic
 add_library(${target} SHARED ${pluginInterfaceSources})
-target_link_libraries(${target} ${staticTarget})
+target_link_libraries(${target} PUBLIC ${staticTarget})
 configure_cxx_target(${target} PLUGIN_TARGET)
 
 

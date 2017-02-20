@@ -226,7 +226,7 @@ bool PCDMProject::importHorizontalCoordinatesFrom(vtkDataSet & dataSet)
         poly.SetVerts(verts);
 
 
-        // Copy X/Y columns to be used in the modeling backend 
+        // Copy X/Y columns to be used in the modeling backend
 
         m_horizontalCoordsValues[0].resize(static_cast<size_t>(numPoints));
         m_horizontalCoordsValues[1].resize(static_cast<size_t>(numPoints));
@@ -353,9 +353,15 @@ PCDMModel * PCDMProject::addModel(const QDateTime & timestamp)
     const auto modelPath = modelsDir(m_rootFolder);
 
     auto modelDir = QDir(modelPath);
-    if (!modelDir.exists() && !modelDir.mkdir("."))
+    if (!modelDir.exists())
     {
-        return nullptr;
+        const auto dirName = modelDir.dirName();
+        auto upDir = modelDir;
+        upDir.cdUp();
+        if (!upDir.mkdir(dirName))
+        {
+            return nullptr;
+        }
     }
 
     auto newIt = m_models.emplace(
