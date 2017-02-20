@@ -37,7 +37,7 @@ source_group_by_path(${CMAKE_CURRENT_BINARY_DIR} ".*" "Generated" ${UI_Srcs} ${Q
 source_group_by_path(${CMAKE_CURRENT_SOURCE_DIR} ".*" "" "CMakeLists.txt")
 
 
-find_package(Eigen3 REQUIRED)
+find_package(Eigen3 REQUIRED VERSION 3.3)
 
 
 # The plugin does only export the plugin interface but not actual library functions.
