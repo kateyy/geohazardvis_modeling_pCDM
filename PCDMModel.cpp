@@ -48,8 +48,8 @@ PCDMModel::PCDMModel(
     , m_project{ project }
     , m_baseDir{ baseDir }
     , m_isRemoved{ false }
-    , m_timestamp{ timestamp }
     , m_hasStoredResults{ false }
+    , m_timestamp{ timestamp }
     , m_name{}
     , m_parameters{}
     , m_results{}
@@ -167,8 +167,8 @@ void PCDMModel::requestResultsAsync()
             }
         }
 
-        bool skipEmit;
         PCDMModel & p;
+        bool skipEmit;
     } emitOnExit(*this);
 
     if (loadedResultsAreValid())
@@ -185,7 +185,7 @@ void PCDMModel::requestResultsAsync()
         }
     }
 
-    auto runFunc = [this] () 
+    auto runFunc = [this] ()
     {
         PCDMBackend backend;
         backend.setHorizontalCoords(m_project.horizontalCoordinateValues());
