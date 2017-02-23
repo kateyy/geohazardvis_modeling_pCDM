@@ -201,11 +201,17 @@
              <property name="decimals">
               <number>4</number>
              </property>
+             <property name="minimum">
+              <double>-1.000000000000000</double>
+             </property>
              <property name="maximum">
-              <double>1.000000000000000</double>
+              <double>0.500000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.100000000000000</double>
              </property>
              <property name="value">
-              <double>0.500000000000000</double>
+              <double>0.250000000000000</double>
              </property>
             </widget>
            </item>
@@ -495,7 +501,7 @@
               <number>5</number>
              </property>
              <property name="maximum">
-              <double>1.000000000000000</double>
+              <double>1000000.000000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.000100000000000</double>
@@ -511,7 +517,7 @@
               <number>5</number>
              </property>
              <property name="maximum">
-              <double>1.000000000000000</double>
+              <double>1000000.000000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.000100000000000</double>
@@ -527,7 +533,7 @@
               <number>5</number>
              </property>
              <property name="maximum">
-              <double>1.000000000000000</double>
+              <double>1000000.000000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.000100000000000</double>
