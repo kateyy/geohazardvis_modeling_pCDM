@@ -446,6 +446,10 @@ void PCDMWidget::prepareSetupSurfaceParameters()
 
         auto coordsSystem = transformable->coordinateSystem();
         coordsSystem.type = CoordinateSystemType::metricLocal;
+        if (coordsSystem.unitOfMeasurement.isEmpty())
+        {
+            coordsSystem.unitOfMeasurement = "km";
+        }
 
         return transformable->canTransformTo(coordsSystem);
     });
