@@ -261,7 +261,7 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         vis->colorMapping().setEnabled(false);
     }
 
-    emit m_dataObject->dataChanged();
+    m_dataObject->signal_dataChanged();
 }
 
 void PCDMVisualizationGenerator::cleanup()
