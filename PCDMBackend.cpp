@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <future>
 
 #include <QDebug>
 
@@ -36,14 +37,15 @@ const auto pi = static_cast<t_FP>(M_PI);
 /**
  * PTDdispSurf calculates surface displacements associated with a tensile
  * point dislocation(PTD) in an elastic half - space(Okada, 1985). */
-ArrayX3 PTDdispSurf(
+void PTDdispSurf(
     const std::array<std::vector<t_FP>, 2> & horizontalCoords,
     const std::array<t_FP, 2> & xy0,
     const t_FP depth,
     const t_FP strike,
     const t_FP dipRad,
     const t_FP DV,
-    const t_FP nu)
+    const t_FP nu,
+    ArrayX3 & ue_un_uv)
 {
     const auto & x = horizontalCoords[0];
     const auto & y = horizontalCoords[1];
@@ -97,7 +99,6 @@ ArrayX3 PTDdispSurf(
     const ArrayX1 qSqTimes3DivRPow5 = 3 * q.square() / r.pow(5);
     // Note: For a PTD M0 = DV*mu!
     ArrayX2 ue_un_temp;
-    ArrayX3 ue_un_uv;
     ue_un_temp.resize(numCoords, Eigen::NoChange);
     ue_un_uv.resize(numCoords, Eigen::NoChange);
 
@@ -107,8 +108,6 @@ ArrayX3 PTDdispSurf(
 
     ue_un_uv.block<Eigen::Dynamic, 2>(0, 0, numCoords, 2) =
         (Rz.transpose() * ue_un_temp.matrix().transpose()).transpose();
-
-    return ue_un_uv;
 }
 
 }
@@ -235,14 +234,18 @@ auto PCDMBackend::run() -> State
     }
     const auto dip3Rad = std::acos(R(2, 2));
 
+    std::vector<std::future<void>> PTDdispSurfFutures;
+
     // Calculate contribution of the first PTD
     ArrayX3 ue_un_uv1;
     if (DV[0] != 0)
     {
-        ue_un_uv1 = PTDdispSurf(
+        PTDdispSurfFutures.push_back(
+            std::async(PTDdispSurf,
             m_horizontalCoords,
             m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
-            strike1, dip1Rad, DV[0], m_parameters.nu);
+            strike1, dip1Rad, DV[0], m_parameters.nu,
+            std::ref(ue_un_uv1)));
     }
     else
     {
@@ -254,10 +257,12 @@ auto PCDMBackend::run() -> State
     ArrayX3 ue_un_uv2;
     if (DV[1] != 0)
     {
-        ue_un_uv2 = PTDdispSurf(
-            m_horizontalCoords,
-            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
-            strike2, dip2Rad, DV[1], m_parameters.nu);
+        PTDdispSurfFutures.push_back(
+            std::async(PTDdispSurf,
+                m_horizontalCoords,
+                m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+                strike2, dip2Rad, DV[1], m_parameters.nu,
+                std::ref(ue_un_uv2)));
     }
     else
     {
@@ -269,15 +274,22 @@ auto PCDMBackend::run() -> State
     ArrayX3 ue_un_uv3;
     if (DV[2] != 0)
     {
-        ue_un_uv3 = PTDdispSurf(
-            m_horizontalCoords,
-            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
-            strike3, dip3Rad, DV[2], m_parameters.nu);
+        PTDdispSurfFutures.push_back(
+            std::async(PTDdispSurf,
+                m_horizontalCoords,
+                m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+                strike3, dip3Rad, DV[2], m_parameters.nu,
+                std::ref(ue_un_uv3)));
     }
     else
     {
         ue_un_uv3.resize(inputSize, Eigen::NoChange);
         ue_un_uv3.setZero();
+    }
+
+    for (auto && future : PTDdispSurfFutures)
+    {
+        future.get();
     }
 
     const auto numTuples = static_cast<size_t>(ue_un_uv1.rows());
