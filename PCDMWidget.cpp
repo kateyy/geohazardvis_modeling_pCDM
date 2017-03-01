@@ -551,26 +551,7 @@ void PCDMWidget::updateSurfaceSummary()
     }
 
     {
-        struct AddRowsWorker
-        {
-            ~AddRowsWorker()
-            {
-                table.setColumnCount(2);
-                table.setRowCount(static_cast<int>(lines.size()));
-                for (int i = 0; i < static_cast<int>(lines.size()); ++i)
-                {
-                    table.setItem(i, 0, new QTableWidgetItem(lines[i].first));
-                    table.setItem(i, 1, new QTableWidgetItem(lines[i].second));
-                }
-            }
-            QTableWidget & table;
-            std::vector<std::pair<QString, QString>> lines;
-        } addRows{ *m_ui->surfaceSummaryTable, {} };
-
-        auto addRow = [&addRows] (const QString & title, const QString & text)
-        {
-            addRows.lines.emplace_back(title, text);
-        };
+        QTableWidgetSetRowsWorker addRow{ *m_ui->surfaceSummaryTable };
 
         auto && coords = m_project->coordinateSystem();
 
