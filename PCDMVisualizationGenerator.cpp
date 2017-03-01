@@ -15,6 +15,7 @@
 
 #include <core/AbstractVisualizedData.h>
 #include <core/color_mapping/ColorMapping.h>
+#include <core/color_mapping/ColorMappingData.h>
 #include <core/DataSetHandler.h>
 #include <core/data_objects/ImageDataObject.h>
 #include <core/data_objects/PointCloudDataObject.h>
@@ -33,7 +34,7 @@ using pCDM::t_FP;
 namespace
 {
 
-static const QVector<QString> uvecArrayNames = { "ue", "un", "uv" };
+const char * const deformationArrayName = { "Deformation" };
 
 }
 
@@ -110,19 +111,12 @@ DataObject * PCDMVisualizationGenerator::dataObject()
 
     const auto numPoints = dataSet->GetNumberOfPoints();
 
-
-    for (auto && arrayName : uvecArrayNames)
-    {
-        auto array = vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>::New();
-        array->SetNumberOfValues(numPoints);
-        array->SetName(arrayName.toUtf8().data());
-        array->FillValue(0);
-
-        visDataSet->GetPointData()->AddArray(array);
-    }
-
-    visDataSet->GetPointData()->SetActiveScalars(uvecArrayNames.last().toUtf8().data());
-
+    auto visArray = vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>::New();
+    visArray->SetNumberOfComponents(3);
+    visArray->SetNumberOfTuples(numPoints);
+    visArray->SetName(deformationArrayName);
+    visArray->FillValue(0);
+    visDataSet->GetPointData()->SetScalars(visArray);
 
     static const char * dataObjectName = "pCDM Modeling Result";
 
@@ -189,6 +183,9 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
 
     const auto numPoints = m_dataObject->numberOfPoints();
     auto & pointData = *m_dataObject->dataSet()->GetPointData();
+    auto visArray = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
+        pointData.GetAbstractArray(deformationArrayName));
+    assert(visArray && visArray->GetNumberOfTuples() == numPoints);
 
     bool validResults = false;
     while (model.hasResults())
@@ -202,21 +199,18 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
             break;
         }
 
-        auto arrayNameIt = uvecArrayNames.begin();
+        assert(visArray->GetNumberOfComponents() == uvec.size());
+
         auto uvecIt = uvec.begin();
-
-        for (; arrayNameIt != uvecArrayNames.end(); ++arrayNameIt, ++uvecIt)
+        int component = 0;
+        for (; uvecIt != uvec.end(); ++uvecIt, ++component)
         {
-            auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
-                pointData.GetAbstractArray(arrayNameIt->toUtf8().data()));
-            assert(array && array->GetNumberOfValues() == numPoints);
-
             for (vtkIdType i = 0; i < numPoints; ++i)
             {
-                array->SetTypedComponent(i, 0, (*uvecIt)[static_cast<size_t>(i)]);
+                visArray->SetTypedComponent(i, component, (*uvecIt)[static_cast<size_t>(i)]);
             }
-            array->Modified();
         }
+        visArray->Modified();
 
         validResults = true;
         break;
@@ -224,15 +218,8 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
 
     if (!validResults)
     {
-        for (auto && name : uvecArrayNames)
-        {
-            auto array = vtkAOSDataArrayTemplate<t_FP>::FastDownCast(
-                pointData.GetAbstractArray(name.toUtf8().data()));
-            assert(array && array->GetNumberOfValues() == numPoints);
-
-            array->FillValue(static_cast<t_FP>(0));
-            array->Modified();
-        }
+        visArray->FillValue(static_cast<t_FP>(0));
+        visArray->Modified();
     }
 
     showDataObject();
@@ -248,15 +235,14 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
     // default array.
     if (validResults &&
         (!vis->colorMapping().isEnabled()
-        || !uvecArrayNames.contains(vis->colorMapping().currentScalarsName())))
+        || vis->colorMapping().currentScalarsName() != deformationArrayName))
     {
-        vis->colorMapping().setCurrentScalarsByName(
-            pointData.GetScalars()->GetName(),
-            true);
+        vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true);
+        vis->colorMapping().currentScalars().setDataComponent(2);
     }
 
     // If there are no valid results, make sure that the invalidated/zero values are not mapped.
-    if (!validResults && uvecArrayNames.contains(vis->colorMapping().currentScalarsName()))
+    if (!validResults && (deformationArrayName == vis->colorMapping().currentScalarsName()))
     {
         vis->colorMapping().setEnabled(false);
     }
