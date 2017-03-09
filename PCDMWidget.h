@@ -39,6 +39,7 @@ private:
     void loadSettings();
     void saveSettings();
     void prependRecentProject(const QString & projectRootFolder);
+    void removeRecentProject(const QString & projectRootFolder);
     void updateRecentProjectsMenu();
 
     void openProjectDialog();

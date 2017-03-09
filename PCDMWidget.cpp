@@ -232,6 +232,14 @@ void PCDMWidget::prependRecentProject(const QString & projectRootFolder)
     updateRecentProjectsMenu();
 }
 
+void PCDMWidget::removeRecentProject(const QString & projectRootFolder)
+{
+    if (m_recentProjects.removeOne(projectRootFolder))
+    {
+        updateRecentProjectsMenu();
+    }
+}
+
 void PCDMWidget::updateRecentProjectsMenu()
 {
     m_recentProjectsMenu->clear();
@@ -400,6 +408,7 @@ void PCDMWidget::checkLoadProjectFrom(const QString & rootFolder, bool reportErr
             QMessageBox::warning(this, "Project Selection",
                 "Cannot open the selected project. " + errorMessage);
         }
+        removeRecentProject(rootFolder);
         return;
     }
     loadProjectFrom(rootFolder);
