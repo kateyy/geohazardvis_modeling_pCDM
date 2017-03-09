@@ -165,7 +165,7 @@ void PCDMVisualizationGenerator::showDataObject()
     }
 }
 
-void PCDMVisualizationGenerator::showModel(PCDMModel & model)
+void PCDMVisualizationGenerator::setModel(PCDMModel & model)
 {
     if (!m_project || &model.project() != m_project)
     {
@@ -222,14 +222,14 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
         visArray->Modified();
     }
 
-    showDataObject();
-    if (!m_renderView)
+    m_dataObject->signal_dataChanged();
+
+    // Only configure an already shown visualization, don't create a new one.
+    auto vis = m_renderView ? m_renderView->visualizationFor(m_dataObject.get()) : nullptr;
+    if (!vis)
     {
         return;
     }
-
-    auto vis = m_renderView->visualizationFor(m_dataObject.get());
-    assert(vis);
 
     // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
     // default array.
@@ -246,8 +246,23 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
     {
         vis->colorMapping().setEnabled(false);
     }
+}
 
-    m_dataObject->signal_dataChanged();
+void PCDMVisualizationGenerator::showModel(PCDMModel & model)
+{
+    if (!m_project || &model.project() != m_project)
+    {
+        return;
+    }
+
+    showDataObject();
+
+    if (!m_renderView)
+    {
+        return;
+    }
+
+    setModel(model);
 }
 
 void PCDMVisualizationGenerator::cleanup()

@@ -49,6 +49,11 @@ public:
      * If a render view is opened, this function will add the data object to the view and configure
      * color mappings to visualize "uv" values.
      */
+    void setModel(PCDMModel & model);
+    /**
+     * Open a render view, update the preview data to represent the specified model and visualize
+     * it.
+     */
     void showModel(PCDMModel & model);
 
     void cleanup();

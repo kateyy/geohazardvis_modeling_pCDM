@@ -652,7 +652,7 @@ void PCDMWidget::runModel()
     }
 
     updateModelsList();
-    m_visGenerator->showModel(model);
+    m_visGenerator->setModel(model);
 }
 
 void PCDMWidget::saveModelDialog()
@@ -703,7 +703,6 @@ void PCDMWidget::showVisualization()
         return;
     }
 
-    m_visGenerator->openRenderView();
     m_visGenerator->showModel(*model);
 }
 
@@ -909,7 +908,7 @@ void PCDMWidget::resetToSelectedModel()
 
     sourceParametersToUi(model->parameters());
     m_project->setLastModelTimestamp(model->timestamp());
-    m_visGenerator->showModel(*model);
+    m_visGenerator->setModel(*model);
 
     m_ui->modelingTabWidget->setCurrentIndex(0);
 }
