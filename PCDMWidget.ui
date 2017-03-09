@@ -68,7 +68,7 @@
        <item row="0" column="0">
         <widget class="QStackedWidget" name="surfaceStackedWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>1</number>
          </property>
          <widget class="QWidget" name="surfaceOverviewPage">
           <layout class="QGridLayout" name="gridLayout_3">
@@ -194,12 +194,12 @@
             </widget>
            </item>
            <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="poissonsRatioEdit">
+            <widget class="DoubleSpinBox" name="poissonsRatioEdit">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
              <property name="decimals">
-              <number>4</number>
+              <number>8</number>
              </property>
              <property name="minimum">
               <double>-1.000000000000000</double>
@@ -293,7 +293,7 @@
         <item row="1" column="1">
          <widget class="QWidget" name="widget" native="true">
           <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+           <sizepolicy hsizetype="Expanding" vsizetype="Maximum">
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
@@ -377,7 +377,10 @@
             </widget>
            </item>
            <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="omegaXSpinBox">
+            <widget class="DoubleSpinBox" name="omegaXSpinBox">
+             <property name="wrapping">
+              <bool>true</bool>
+             </property>
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
@@ -388,7 +391,7 @@
               <string> °</string>
              </property>
              <property name="decimals">
-              <number>3</number>
+              <number>8</number>
              </property>
              <property name="minimum">
               <double>-360.000000000000000</double>
@@ -406,7 +409,10 @@
             </widget>
            </item>
            <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="omegaYSpinBox">
+            <widget class="DoubleSpinBox" name="omegaYSpinBox">
+             <property name="wrapping">
+              <bool>true</bool>
+             </property>
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
@@ -417,7 +423,7 @@
               <string> °</string>
              </property>
              <property name="decimals">
-              <number>3</number>
+              <number>8</number>
              </property>
              <property name="minimum">
               <double>-360.000000000000000</double>
@@ -435,7 +441,10 @@
             </widget>
            </item>
            <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="omegaZSpinBox">
+            <widget class="DoubleSpinBox" name="omegaZSpinBox">
+             <property name="wrapping">
+              <bool>true</bool>
+             </property>
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
@@ -446,7 +455,7 @@
               <string> °</string>
              </property>
              <property name="decimals">
-              <number>3</number>
+              <number>8</number>
              </property>
              <property name="minimum">
               <double>-360.000000000000000</double>
@@ -478,10 +487,30 @@
              </property>
             </widget>
            </item>
+           <item row="0" column="1">
+            <widget class="DoubleSpinBox" name="dvXSpinBox">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>8</number>
+             </property>
+            </widget>
+           </item>
            <item row="1" column="0">
             <widget class="QLabel" name="label_11">
              <property name="text">
               <string>Y</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="DoubleSpinBox" name="dvYSpinBox">
+             <property name="buttonSymbols">
+              <enum>QAbstractSpinBox::NoButtons</enum>
+             </property>
+             <property name="decimals">
+              <number>8</number>
              </property>
             </widget>
            </item>
@@ -492,51 +521,13 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="dvXSpinBox">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>5</number>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.000100000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="dvYSpinBox">
-             <property name="buttonSymbols">
-              <enum>QAbstractSpinBox::NoButtons</enum>
-             </property>
-             <property name="decimals">
-              <number>5</number>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.000100000000000</double>
-             </property>
-            </widget>
-           </item>
            <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="dvZSpinBox">
+            <widget class="DoubleSpinBox" name="dvZSpinBox">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
              <property name="decimals">
-              <number>5</number>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.000100000000000</double>
+              <number>8</number>
              </property>
             </widget>
            </item>
@@ -566,18 +557,12 @@
             </widget>
            </item>
            <item row="0" column="1">
-            <widget class="QDoubleSpinBox" name="positionXSpinBox">
+            <widget class="DoubleSpinBox" name="positionXSpinBox">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
              <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
+              <number>8</number>
              </property>
             </widget>
            </item>
@@ -592,18 +577,12 @@
             </widget>
            </item>
            <item row="1" column="1">
-            <widget class="QDoubleSpinBox" name="positionYSpinBox">
+            <widget class="DoubleSpinBox" name="positionYSpinBox">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
              <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
+              <number>8</number>
              </property>
             </widget>
            </item>
@@ -618,18 +597,15 @@
             </widget>
            </item>
            <item row="2" column="1">
-            <widget class="QDoubleSpinBox" name="depthSpinBox">
+            <widget class="DoubleSpinBox" name="depthSpinBox">
              <property name="buttonSymbols">
               <enum>QAbstractSpinBox::NoButtons</enum>
              </property>
              <property name="decimals">
-              <number>3</number>
+              <number>8</number>
              </property>
              <property name="minimum">
-              <double>-1000000.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>1000000.000000000000000</double>
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -777,6 +753,13 @@ p, li { white-space: pre-wrap; }
    </layout>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>gui/widgets/DoubleSpinBox.h</header>
+  </customwidget>
+ </customwidgets>
  <tabstops>
   <tabstop>projectMenuButton</tabstop>
   <tabstop>projectNameEdit</tabstop>
