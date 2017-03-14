@@ -53,6 +53,7 @@ private:
     void updateSurfaceSummary();
 
     void runModel();
+    void handleModelDone();
     void saveModelDialog();
     void showVisualization();
 

@@ -175,6 +175,7 @@ void PCDMWidget::setupStateMachine()
     sComputeModel->assignProperty(m_ui->pCDMRotationGroup, "enabled", false);
     sComputeModel->assignProperty(m_ui->pCDMPotenciesGroup, "enabled", false);
     sComputeModel->assignProperty(m_ui->runButton, "enabled", false);
+    sComputeModel->assignProperty(m_ui->saveModelButton, "enabled", false);
     sComputeModel->assignProperty(m_ui->openVisualizationButton, "enabled", false);
     sComputeModel->assignProperty(m_ui->savedModelsTab, "enabled", false);
 
@@ -652,16 +653,28 @@ void PCDMWidget::runModel()
 
     m_project->setLastModelTimestamp(model.timestamp());
 
-    model.requestResultsAsync();
+    connect(&model, &PCDMModel::requestCompleted, this, &PCDMWidget::handleModelDone);
     emit m_stateHelper->computingModel();
+    model.requestResultsAsync();
+}
 
-    // TODO responsive GUI for very large setups
-    qApp->processEvents();
+void PCDMWidget::handleModelDone()
+{
+    assert(m_project);
+    auto modelPtr = m_project->model(m_project->lastModelTimestamp());
+    assert(modelPtr);
+    if (!modelPtr)
+    {
+        return;
+    }
 
-    const bool result = model.waitForResults();
+    disconnect(modelPtr, &PCDMModel::requestCompleted, this, &PCDMWidget::handleModelDone);
+
+    auto & model = *modelPtr;
+
     emit m_stateHelper->computingEnded();
 
-    if (!result)
+    if (!model.hasResults() || model.results()[0].empty())
     {
         QMessageBox::critical(this, "pCDM Modeling", "An error occurred in the modeling back-end.");
         return;
