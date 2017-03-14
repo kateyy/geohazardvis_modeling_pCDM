@@ -47,6 +47,7 @@ public:
     vtkDataSet * horizontalCoordinatesDataSet();
     const std::array<std::vector<pCDM::t_FP>, 2> & horizontalCoordinateValues();
     const QString & horizontalCoordinatesGeometryType() const;
+    size_t numHorizontalCoordinates() const;
     /**
      * Read coordinate system specifications from the coordinate data set's field data.
      */

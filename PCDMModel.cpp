@@ -1,7 +1,6 @@
 #include "PCDMModel.h"
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 
 #include <QDebug>
@@ -9,13 +8,8 @@
 #include <QSettings>
 #include <QtConcurrent>
 
-#include <vtkAOSDataArrayTemplate.h>
-#include <vtkDelimitedTextWriter.h>
-#include <vtkSmartPointer.h>
-#include <vtkTable.h>
-
 #include <core/data_objects/DataObject.h>
-#include <core/io/TextFileReader.h>
+#include <core/io/BinaryFile.h>
 #include <core/utility/conversions.h>
 
 #include "PCDMBackend.h"
@@ -34,7 +28,7 @@ QString settingsFileName(const QString & baseDir, const QDateTime & timestamp)
 
 QString resultsFileName(const QString & baseDir, const QDateTime & timestamp)
 {
-    return QDir(baseDir).filePath(PCDMProject::timestampToString(timestamp) + "_u_vec.ini");
+    return QDir(baseDir).filePath(PCDMProject::timestampToString(timestamp) + "_u_vec.bin");
 }
 
 }
@@ -216,12 +210,6 @@ bool PCDMModel::waitForResults()
     return loadedResultsAreValid();
 }
 
-DataObject * PCDMModel::resultDataObject()
-{
-    // TODO
-    return nullptr;
-}
-
 const std::array<std::vector<pCDM::t_FP>, 3> & PCDMModel::results()
 {
     if (m_results[0].empty() && m_hasStoredResults)
@@ -315,25 +303,24 @@ void PCDMModel::readResults()
         return;
     }
 
-    auto reader = TextFileReader(fileName);
-    TextFileReader::Vector_t<QString> header;
-    reader.read(header, 1);
-    TextFileReader::Vector_t<t_FP> storedResults;
-    reader.read(storedResults);
-
-    if (!reader.stateFlags().testFlag(TextFileReader::successful)
-        || storedResults.size() != m_results.size())
+    auto failDiscardData = [this, &fileName] ()
     {
         qDebug() << "Reading previously stored results failed. Discarding data.";
         QFile(fileName).remove();
         m_hasStoredResults = false;
         writeHasStoredResults();
-        return;
-    }
+    };
 
-    for (size_t i = 0; i < m_results.size(); ++i)
+    const auto numTuples = m_project.numHorizontalCoordinates();
+
+    auto reader = BinaryFile(fileName, BinaryFile::OpenMode::Read);
+
+    for (auto & component : m_results)
     {
-        m_results[i] = std::move(storedResults[i]);
+        if (!reader.read(numTuples, component))
+        {
+            return failDiscardData();
+        }
     }
 }
 
@@ -341,50 +328,43 @@ void PCDMModel::storeResults()
 {
     const auto fileName = resultsFileName(m_baseDir, m_timestamp);
 
-    assert(m_results.size() == 3);
+    const auto numTuples = m_project.numHorizontalCoordinates();
     assert(!m_results[0].empty());
-
-    const auto numValues = m_results[0].size();
-
     if (m_results[0].empty()
         || !std::all_of(m_results.begin(), m_results.end(),
-            [numValues] (const decltype(m_results)::value_type & vec)
-        { return vec.size() == numValues; }))
+            [numTuples] (const decltype(m_results)::value_type & vec)
+        { return vec.size() == numTuples; }))
     {
         qDebug() << "Trying to write invalid results";
         return;
     }
 
-    std::array<vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>, 3> vtkArrays;
-    auto table = vtkSmartPointer<vtkTable>::New();
-    for (unsigned c = 0; c < 3; ++c)
+    auto setHasSuccess = [this, &fileName] (bool success)
     {
-        auto & array = vtkArrays[c];
-        array = vtkSmartPointer<vtkAOSDataArrayTemplate<t_FP>>::New();
-        array->SetArray(
-            m_results[c].data(),
-            static_cast<vtkIdType>(numValues),
-            true, true);
-        table->AddColumn(array);
+        m_hasStoredResults = success;
+        if (!success)
+        {
+            qDebug() << "Failed to write results file:" << fileName;
+            QFile(fileName).remove();
+        }
+        writeHasStoredResults();
+    };
+
+    auto writer = BinaryFile(fileName, BinaryFile::OpenMode::Write | BinaryFile::OpenMode::Truncate);
+    for (auto & component : m_results)
+    {
+        if (!writer.write(component))
+        {
+            return setHasSuccess(false);
+        }
     }
-    vtkArrays[0]->SetName("ue");
-    vtkArrays[1]->SetName("un");
-    vtkArrays[2]->SetName("uv");
 
-    auto writer = vtkSmartPointer<vtkDelimitedTextWriter>::New();
-    writer->SetFieldDelimiter(" ");
-    writer->SetUseStringDelimiter(false);
-    writer->SetFileName(fileName.toUtf8().data());
-    writer->SetInputData(table);
-
-    m_hasStoredResults = writer->Write() == 1;
-
-    writeHasStoredResults();
+    return setHasSuccess(true);
 }
 
 bool PCDMModel::loadedResultsAreValid() const
 {
-    const auto numTuples = m_results[0].size();
+    const auto numTuples = m_project.numHorizontalCoordinates();
 
     return !m_results[0].empty()
         && std::all_of(m_results.begin(), m_results.end(),

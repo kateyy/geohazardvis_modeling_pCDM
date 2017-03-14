@@ -89,14 +89,6 @@ public:
     */
     bool waitForResults();
 
-    /**
-     * DataObject instance that contains modeling results as surface data.
-     * This returns only a valid object if computing point coordinates in the project are set.
-     * Result scalars/vectors are only available if the source parameters are valid and results
-     * were previously computed.
-    */
-    DataObject * resultDataObject();
-
     const std::array<std::vector<pCDM::t_FP>, 3> & results();
 
     void invalidateResults();

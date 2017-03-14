@@ -300,6 +300,16 @@ const QString & PCDMProject::horizontalCoordinatesGeometryType() const
     return m_coordsGeometryType;
 }
 
+size_t PCDMProject::numHorizontalCoordinates() const
+{
+    if (m_coordsDataSet)
+    {
+        return static_cast<size_t>(m_coordsDataSet->GetNumberOfPoints());
+    }
+    
+    return 0u;
+}
+
 ReferencedCoordinateSystemSpecification PCDMProject::coordinateSystem() const
 {
     ReferencedCoordinateSystemSpecification spec;
