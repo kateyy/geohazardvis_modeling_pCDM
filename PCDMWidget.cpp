@@ -553,10 +553,13 @@ void PCDMWidget::updateSurfaceSummary()
     vtkIdType numCoordinates = 0;
     DataBounds bounds;
     QString dataType;
+    QString coordsUnitSuffix;
     if (auto dataSet = m_project->horizontalCoordinatesDataSet())
     {
         numCoordinates = dataSet->GetNumberOfPoints();
         dataSet->GetBounds(bounds.data());
+        const auto spec = CoordinateSystemSpecification::fromFieldData(*dataSet->GetFieldData());
+        coordsUnitSuffix = " " + spec.unitOfMeasurement;
     }
 
     {
@@ -602,6 +605,10 @@ void PCDMWidget::updateSurfaceSummary()
 
     m_ui->surfaceSummaryTable->resizeColumnToContents(0);
     m_ui->surfaceSummaryTable->resizeRowsToContents();
+
+    m_ui->positionXSpinBox->setSuffix(coordsUnitSuffix);
+    m_ui->positionYSpinBox->setSuffix(coordsUnitSuffix);
+    m_ui->depthSpinBox->setSuffix(coordsUnitSuffix);
 }
 
 void PCDMWidget::runModel()
