@@ -33,6 +33,9 @@ public:
         Qt::WindowFlags flags = {});
     ~PCDMWidget() override;
 
+protected:
+    void showEvent(QShowEvent * event) override;
+
 private:
     void setupStateMachine();
 
@@ -82,6 +85,7 @@ private:
     std::unique_ptr<PCDMWidget_StateHelper> m_stateHelper;
     std::unique_ptr<DataSetFilter> m_coordsDataSetFilter;
     std::unique_ptr<PCDMVisualizationGenerator> m_visGenerator;
+    bool m_firstShowEventHandlingRequired;
 
     std::unique_ptr<PCDMProject> m_project;
 };

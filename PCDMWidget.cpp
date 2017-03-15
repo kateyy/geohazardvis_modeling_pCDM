@@ -51,6 +51,7 @@ PCDMWidget::PCDMWidget(
     , m_stateMachine{ std::make_unique<QStateMachine>() }
     , m_stateHelper{ std::make_unique<PCDMWidget_StateHelper>() }
     , m_visGenerator{ std::make_unique<PCDMVisualizationGenerator>(pluginInterface.dataMapping()) }
+    , m_firstShowEventHandlingRequired{ true }
 {
     m_ui->setupUi(this);
     m_ui->savedModelsTable->sortByColumn(0, Qt::SortOrder::DescendingOrder);
@@ -106,15 +107,24 @@ PCDMWidget::PCDMWidget(
     connect(m_ui->savedModelsTable, &QTableWidget::doubleClicked, this, &PCDMWidget::resetToSelectedModel);
 
     setupStateMachine();
-
     qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
-
-    loadSettings();
 }
 
 PCDMWidget::~PCDMWidget()
 {
     saveSettings();
+}
+
+void PCDMWidget::showEvent(QShowEvent * /*event*/)
+{
+    if (!m_firstShowEventHandlingRequired)
+    {
+        return;
+    }
+
+    m_firstShowEventHandlingRequired = false;
+
+    loadSettings();
 }
 
 void PCDMWidget::setupStateMachine()
