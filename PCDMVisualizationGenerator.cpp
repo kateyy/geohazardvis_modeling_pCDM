@@ -199,7 +199,7 @@ void PCDMVisualizationGenerator::setModel(PCDMModel & model)
             break;
         }
 
-        assert(visArray->GetNumberOfComponents() == uvec.size());
+        assert(visArray->GetNumberOfComponents() == static_cast<int>(uvec.size()));
 
         auto uvecIt = uvec.begin();
         int component = 0;
