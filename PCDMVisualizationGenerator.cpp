@@ -21,7 +21,7 @@
 #include <core/data_objects/PointCloudDataObject.h>
 #include <core/utility/qthelper.h>
 #include <gui/DataMapping.h>
-#include <gui/data_view/AbstractRenderView.h>
+#include <gui/data_view/ResidualVerificationView.h>
 
 #include "pCDM_types.h"
 #include "PCDMModel.h"
@@ -52,6 +52,11 @@ PCDMVisualizationGenerator::~PCDMVisualizationGenerator()
     if (m_renderView && m_renderView->isEmpty())
     {
         m_renderView->close();
+    }
+
+    if (m_residualView && m_residualView->isEmpty())
+    {
+        m_residualView->close();
     }
 }
 
@@ -90,6 +95,16 @@ void PCDMVisualizationGenerator::openRenderView()
     }
 
     m_renderView = m_dataMapping.createDefaultRenderViewType();
+}
+
+void PCDMVisualizationGenerator::openResidualView()
+{
+    if (m_residualView)
+    {
+        return;
+    }
+
+    m_residualView = m_dataMapping.createRenderView<ResidualVerificationView>();
 }
 
 DataObject * PCDMVisualizationGenerator::dataObject()
@@ -165,6 +180,19 @@ void PCDMVisualizationGenerator::showDataObject()
     }
 }
 
+void PCDMVisualizationGenerator::showDataObjectsInResidualView()
+{
+    const auto data = dataObject();
+    if (!data)
+    {
+        return;
+    }
+
+    openResidualView();
+
+    m_residualView->setModelData(m_dataObject.get());
+}
+
 void PCDMVisualizationGenerator::setModel(PCDMModel & model)
 {
     if (!m_project || &model.project() != m_project)
@@ -224,28 +252,7 @@ void PCDMVisualizationGenerator::setModel(PCDMModel & model)
 
     m_dataObject->signal_dataChanged();
 
-    // Only configure an already shown visualization, don't create a new one.
-    auto vis = m_renderView ? m_renderView->visualizationFor(m_dataObject.get()) : nullptr;
-    if (!vis)
-    {
-        return;
-    }
-
-    // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
-    // default array.
-    if (validResults &&
-        (!vis->colorMapping().isEnabled()
-        || vis->colorMapping().currentScalarsName() != deformationArrayName))
-    {
-        vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true);
-        vis->colorMapping().currentScalars().setDataComponent(2);
-    }
-
-    // If there are no valid results, make sure that the invalidated/zero values are not mapped.
-    if (!validResults && (deformationArrayName == vis->colorMapping().currentScalarsName()))
-    {
-        vis->colorMapping().setEnabled(false);
-    }
+    configureVisualizations(validResults);
 }
 
 void PCDMVisualizationGenerator::showModel(PCDMModel & model)
@@ -258,6 +265,23 @@ void PCDMVisualizationGenerator::showModel(PCDMModel & model)
     showDataObject();
 
     if (!m_renderView)
+    {
+        return;
+    }
+
+    setModel(model);
+}
+
+void PCDMVisualizationGenerator::showResidualForModel(PCDMModel & model)
+{
+    if (!m_project || &model.project() != m_project)
+    {
+        return;
+    }
+
+    showDataObjectsInResidualView();
+
+    if (!m_residualView)
     {
         return;
     }
@@ -290,5 +314,34 @@ void PCDMVisualizationGenerator::updateForNewCoordinates()
     if (recreate)
     {
         dataObject();
+    }
+}
+
+void PCDMVisualizationGenerator::configureVisualizations(bool validResults) const
+{
+    // Only configure an already shown visualization, don't create a new one.
+    if (auto vis = m_renderView ? m_renderView->visualizationFor(m_dataObject.get()) : nullptr)
+    {
+        // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
+        // default array.
+        if (validResults &&
+            (!vis->colorMapping().isEnabled()
+                || vis->colorMapping().currentScalarsName() != deformationArrayName))
+        {
+            vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true);
+            vis->colorMapping().currentScalars().setDataComponent(2);
+        }
+
+        // If there are no valid results, make sure that the invalidated/zero values are not mapped.
+        if (!validResults && (deformationArrayName == vis->colorMapping().currentScalarsName()))
+        {
+            vis->colorMapping().setEnabled(false);
+        }
+    }
+
+    if (auto vis = m_residualView ? m_residualView->visualizationFor(m_dataObject.get(), 1) : nullptr)
+    {
+        vis->colorMapping().setEnabled(validResults);
+        m_residualView->updateResidual();
     }
 }

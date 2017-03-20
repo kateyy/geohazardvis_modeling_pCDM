@@ -59,6 +59,7 @@ private:
     void handleModelDone();
     void saveModelDialog();
     void showVisualization();
+    void showResidual();
 
     void sourceParametersToUi(const pCDM::PointCDMParameters & parameters);
     pCDM::PointCDMParameters sourceParametersFromUi() const;

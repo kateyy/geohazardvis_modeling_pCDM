@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>421</width>
-    <height>598</height>
+    <height>633</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -320,6 +320,13 @@
             <widget class="QPushButton" name="openVisualizationButton">
              <property name="text">
               <string>Show Results</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="visualizeResidualsButton">
+             <property name="text">
+              <string>Show Residuals</string>
              </property>
             </widget>
            </item>
@@ -782,6 +789,7 @@ p, li { white-space: pre-wrap; }
   <tabstop>runButton</tabstop>
   <tabstop>saveModelButton</tabstop>
   <tabstop>openVisualizationButton</tabstop>
+  <tabstop>visualizeResidualsButton</tabstop>
   <tabstop>savedModelsTable</tabstop>
   <tabstop>selectedModelSummary</tabstop>
   <tabstop>renameModelButton</tabstop>

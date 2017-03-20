@@ -12,6 +12,7 @@ class DataMapping;
 class DataObject;
 class PCDMModel;
 class PCDMProject;
+class ResidualVerificationView;
 
 
 class PCDMVisualizationGenerator : public QObject
@@ -32,6 +33,12 @@ public:
      */
     void openRenderView();
     /**
+     * Same as openRenderView(), but opens a Residual verification view instead.
+     * This view can be used next to the normal render view, but the views will always visualize
+     * the same modeling data.
+     */
+    void openResidualView();
+    /**
      * Create a data object for the horizontal coordinates of the current project.
      * This data object gets deleted when the project coordinates are changed.
      * Point data attribute arrays are initialized. Call showModel() to fill them with modeling
@@ -44,6 +51,7 @@ public:
      * data object are visible.
      */
     void showDataObject();
+    void showDataObjectsInResidualView();
     /**
      * Update the attribute arrays of dataObject() for the selected model.
      * If a render view is opened, this function will add the data object to the view and configure
@@ -51,15 +59,20 @@ public:
      */
     void setModel(PCDMModel & model);
     /**
-     * Open a render view, update the preview data to represent the specified model and visualize
-     * it.
+     * Utility function to open a render view, update the preview data to represent the specified
+     * model and visualize it.
      */
     void showModel(PCDMModel & model);
+    /*
+     * Same as showModel(), but uses the residual view created by openResidualView().
+     */
+    void showResidualForModel(PCDMModel & model);
 
     void cleanup();
 
 private:
     void updateForNewCoordinates();
+    void configureVisualizations(bool validResults) const;
 
 private:
     DataMapping & m_dataMapping;
@@ -69,4 +82,5 @@ private:
 
     std::unique_ptr<DataObject> m_dataObject;
     QPointer<AbstractRenderView> m_renderView;
+    QPointer<ResidualVerificationView> m_residualView;
 };

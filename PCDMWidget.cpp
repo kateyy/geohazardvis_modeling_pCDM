@@ -63,11 +63,7 @@ PCDMWidget::PCDMWidget(
     m_showProjectFolderAction = m_projectMenu->addAction("Show Project &Folder");
     m_recentProjectsMenu = m_projectMenu->addMenu("&Recent Projects");
 
-    connect(m_ui->projectMenuButton, &QAbstractButton::clicked, [this] ()
-    {
-        m_projectMenu->exec(m_ui->projectMenuButton->mapToGlobal(
-            QPoint(0, m_ui->projectMenuButton->height())));
-    });
+    m_ui->projectMenuButton->setMenu(m_projectMenu.get());
 
     projectNewAction->setIcon(qApp->style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     projectOpenAction->setIcon(qApp->style()->standardIcon(QStyle::SP_DialogOpenButton));
@@ -99,6 +95,7 @@ PCDMWidget::PCDMWidget(
     connect(m_ui->runButton, &QAbstractButton::clicked, this, &PCDMWidget::runModel);
     connect(m_ui->saveModelButton, &QAbstractButton::clicked, this, &PCDMWidget::saveModelDialog);
     connect(m_ui->openVisualizationButton, &QAbstractButton::clicked, this, &PCDMWidget::showVisualization);
+    connect(m_ui->visualizeResidualsButton, &QAbstractButton::clicked, this, &PCDMWidget::showResidual);
 
     connect(m_ui->savedModelsTable, &QTableWidget::itemSelectionChanged, this, &PCDMWidget::updateModelSummary);
     connect(m_ui->renameModelButton, &QAbstractButton::clicked, this, &PCDMWidget::renameSelectedModel);
@@ -743,6 +740,23 @@ void PCDMWidget::showVisualization()
     }
 
     m_visGenerator->showModel(*model);
+}
+
+void PCDMWidget::showResidual()
+{
+    if (!m_project)
+    {
+        return;
+    }
+
+    auto model = m_project->model(m_project->lastModelTimestamp());
+    if (!model)
+    {
+        m_visGenerator->showDataObjectsInResidualView();
+        return;
+    }
+
+    m_visGenerator->showResidualForModel(*model);
 }
 
 void PCDMWidget::sourceParametersToUi(const pCDM::PointCDMParameters & parameters)
