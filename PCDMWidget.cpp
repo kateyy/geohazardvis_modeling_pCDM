@@ -268,7 +268,7 @@ void PCDMWidget::openProjectDialog()
 {
     QDir searchDir(m_project ? m_project->rootFolder() : "");
     searchDir.cdUp();
-    const auto newPath = QFileDialog::getOpenFileName(this, 
+    const auto newPath = QFileDialog::getOpenFileName(this,
         "Select project root folder", searchDir.absolutePath(), PCDMProject::projectFileNameFilter());
 
     if (newPath.isEmpty())
@@ -390,8 +390,8 @@ void PCDMWidget::loadProjectFrom(const QString & rootFolder)
     }
 
     updateModelsList();
-    
-    if (auto model = m_project->model(m_project->lastModelTimestamp()))
+
+    if (m_project->model(m_project->lastModelTimestamp()))
     {
         selectModel(m_project->lastModelTimestamp());
         resetToSelectedModel();
@@ -594,9 +594,9 @@ void PCDMWidget::updateSurfaceSummary()
                 QString::number(latLong[0]) + degreeSign + (latLong[0] >= 0 ? "N" : "S") + " "
                 + QString::number(latLong[1]) + degreeSign + (latLong[1] >= 0 ? "E" : "W")
                 + " (" + coords.geographicSystem + ")";
-            
+
             const auto bounds2D = bounds.convertTo<2>();
-            const auto localRef = bounds2D.min() + 
+            const auto localRef = bounds2D.min() +
                 (bounds2D.componentSize() * coords.referencePointLocalRelative);
 
             relativeReferenceStr = "Northing: " + QString::number(localRef[1]) + unit
@@ -817,7 +817,7 @@ void PCDMWidget::updateModelsList()
         ? std::numeric_limits<int>::max() : static_cast<int>(models.size());
 
     m_ui->savedModelsTable->setRowCount(numModels);
-    
+
     auto it = models.begin();
     int restoredSelectionIndex = -1;
     for (int i = 0; i < numModels; ++i, ++it)

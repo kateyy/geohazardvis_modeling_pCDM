@@ -34,7 +34,7 @@ using pCDM::t_FP;
 namespace
 {
 
-const char * const deformationArrayName = { "Deformation" };
+const char * const deformationArrayName = { "Modeled Deformation" };
 
 }
 

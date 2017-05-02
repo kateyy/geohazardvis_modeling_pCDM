@@ -22,9 +22,11 @@ public:
 
         size_t countX, countY;
         t_FP x, y;
-        for (x = minValX, countX = 0; x <= maxValX + e_x; ++countX, x = countX * stepX + minValX)
+        for (x = minValX, countX = 0; x <= maxValX + e_x;
+             ++countX, x = static_cast<t_FP>(countX) * stepX + minValX)
         {
-            for (y = minValY, countY = 0; y <= maxValY + e_y; ++countY, y = countY * stepY + minValY)
+            for (y = minValY, countY = 0; y <= maxValY + e_y;
+                 ++countY, y = static_cast<t_FP>(countY) * stepY + minValY)
             {
                 mat[0].push_back(x);
                 mat[1].push_back(y);
