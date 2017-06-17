@@ -586,7 +586,7 @@ void PCDMWidget::updateSurfaceSummary()
         addRow("Extent (South-North)", bounds.isEmpty() ? ""
             : QString::number(bounds.dimension(1)[0]) + unit + ", "
             + QString::number(bounds.dimension(1)[1]) + unit);
-        QString referencePointStr, relativeReferenceStr;
+        QString referencePointStr;
         if (coords.isReferencePointValid())
         {
             auto && latLong = coords.referencePointLatLong;
@@ -594,21 +594,12 @@ void PCDMWidget::updateSurfaceSummary()
                 QString::number(latLong[0]) + degreeSign + (latLong[0] >= 0 ? "N" : "S") + " "
                 + QString::number(latLong[1]) + degreeSign + (latLong[1] >= 0 ? "E" : "W")
                 + " (" + coords.geographicSystem + ")";
-
-            const auto bounds2D = bounds.convertTo<2>();
-            const auto localRef = bounds2D.min() +
-                (bounds2D.componentSize() * coords.referencePointLocalRelative);
-
-            relativeReferenceStr = "Northing: " + QString::number(localRef[1]) + unit
-                + ", Easting: " + QString::number(localRef[0]) + unit;
         }
         else
         {
             referencePointStr = "(unspecified)";
-            relativeReferenceStr = "(unspecified)";
         }
         addRow("Reference Point", referencePointStr);
-        addRow("Local Reference", relativeReferenceStr);
     }
 
     m_ui->surfaceSummaryTable->resizeColumnToContents(0);
