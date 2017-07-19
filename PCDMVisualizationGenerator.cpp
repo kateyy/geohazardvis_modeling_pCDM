@@ -53,6 +53,7 @@ namespace
 {
 
 const char * const deformationArrayName = { "Modeled Deformation" };
+const char * const deformationComponentNames[3] = { "ue", "un", "uv" };
 
 }
 
@@ -148,6 +149,9 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     visArray->SetNumberOfComponents(3);
     visArray->SetNumberOfTuples(numPoints);
     visArray->SetName(deformationArrayName);
+    visArray->SetComponentName(0, deformationComponentNames[0]);
+    visArray->SetComponentName(1, deformationComponentNames[1]);
+    visArray->SetComponentName(2, deformationComponentNames[2]);
     visArray->FillValue(0);
     visDataSet->GetPointData()->SetScalars(visArray);
 
