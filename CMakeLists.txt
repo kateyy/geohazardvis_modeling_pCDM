@@ -39,6 +39,10 @@ source_group_by_path(${CMAKE_CURRENT_SOURCE_DIR} ".*" "" "CMakeLists.txt")
 
 find_package(Eigen3 REQUIRED VERSION 3.3)
 
+# Most parts of Eigen are also licensed under MPL2. However, LGPL does not conflict with this
+# project's license, so for now there is no need to distinguish between LGPL and LGPL parts.
+deploy_license_file("Eigen" "${CMAKE_CURRENT_SOURCE_DIR}/cmake/eigen.COPYING.LGPL")
+
 
 # The plugin does only export the plugin interface but not actual library functions.
 # Static linking makes these functions available to tests.
