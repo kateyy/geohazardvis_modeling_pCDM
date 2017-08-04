@@ -259,11 +259,13 @@ auto PCDMBackend::run() -> State
     if (DV[0] != 0)
     {
         PTDdispSurfFutures.push_back(
-            std::async(PTDdispSurf,
-            m_horizontalCoords,
-            m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
-            strike1, dip1Rad, DV[0], m_parameters.nu,
-            std::ref(ue_un_uv1)));
+            std::async(
+                std::launch::async,
+                PTDdispSurf,
+                m_horizontalCoords,
+                m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
+                strike1, dip1Rad, DV[0], m_parameters.nu,
+                std::ref(ue_un_uv1)));
     }
     else
     {
@@ -276,7 +278,9 @@ auto PCDMBackend::run() -> State
     if (DV[1] != 0)
     {
         PTDdispSurfFutures.push_back(
-            std::async(PTDdispSurf,
+            std::async(
+                std::launch::async,
+                PTDdispSurf,
                 m_horizontalCoords,
                 m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
                 strike2, dip2Rad, DV[1], m_parameters.nu,
@@ -293,7 +297,9 @@ auto PCDMBackend::run() -> State
     if (DV[2] != 0)
     {
         PTDdispSurfFutures.push_back(
-            std::async(PTDdispSurf,
+            std::async(
+                std::launch::async,
+                PTDdispSurf,
                 m_horizontalCoords,
                 m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
                 strike3, dip3Rad, DV[2], m_parameters.nu,
