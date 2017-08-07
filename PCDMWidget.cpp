@@ -41,6 +41,7 @@
 #include <core/utility/qthelper.h>
 #include <gui/plugin/GuiPluginInterface.h>
 
+#include "PCDMCreateProjectDialog.h"
 #include "PCDMModel.h"
 #include "PCDMProject.h"
 #include "PCDMVisualizationGenerator.h"
@@ -311,52 +312,12 @@ void PCDMWidget::newProjectDialog()
 {
     QDir currentBaseDir(m_project ? m_project->rootFolder() : "");
     currentBaseDir.cdUp();
-    QString newProjectPath;
-
-    do
+    const QString newProjectPath =
+        PCDMCreateProjectDialog::getNewProjectPath(this, currentBaseDir.path());
+    if (newProjectPath.isEmpty())
     {
-        newProjectPath = QFileDialog::getExistingDirectory(this, "Select new project root folder",
-            currentBaseDir.absolutePath());
-
-        if (newProjectPath.isEmpty())
-        {
-            return;
-        }
-
-        if (PCDMProject::checkFolderIsProject(newProjectPath))
-        {
-            const auto answer = QMessageBox::question(this,
-                "Project Selection",
-                "The selected folder already contains a pCDM project.\nDo you want to load this project?",
-                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
-            if (answer == QMessageBox::Yes)
-            {
-                break;
-            }
-            if (answer == QMessageBox::No)
-            {
-                continue;   // let the user try again
-            }
-            return;         // Cancel
-        }
-
-        if (QDir(newProjectPath).entryInfoList(QDir::NoDotAndDotDot | QDir::AllEntries).count() > 0)
-        {
-            const auto answer = QMessageBox::information(this,
-                "Project Selection",
-                "The selected folder is not empty.\nPlease select an empty folder for the new project!",
-                QMessageBox::Ok | QMessageBox::Cancel);
-            if (answer == QMessageBox::Ok)
-            {
-                continue;
-            }
-            return;         // Cancel
-        }
-
-        break;
-
-    } while (true);
-
+        return;
+    }
     loadProjectFrom(newProjectPath);
 }
 

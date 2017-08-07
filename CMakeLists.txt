@@ -13,6 +13,8 @@ set(sources
     pCDM_types.cpp
     PCDMBackend.h
     PCDMBackend.cpp
+    PCDMCreateProjectDialog.h
+    PCDMCreateProjectDialog.cpp
     PCDMModel.h
     PCDMModel.cpp
     PCDMPlugin.h
@@ -27,6 +29,7 @@ set(sources
 )
 
 set(UIs
+    PCDMCreateProjectDialog.ui
     PCDMWidget.ui
 )
 
