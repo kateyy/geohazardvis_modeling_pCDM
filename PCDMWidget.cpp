@@ -202,6 +202,7 @@ void PCDMWidget::setupStateMachine()
     sComputeModel->assignProperty(m_ui->runButton, "enabled", false);
     sComputeModel->assignProperty(m_ui->saveModelButton, "enabled", false);
     sComputeModel->assignProperty(m_ui->openVisualizationButton, "enabled", false);
+    sComputeModel->assignProperty(m_ui->visualizeResidualsButton, "enabled", false);
     sComputeModel->assignProperty(m_ui->savedModelsTab, "enabled", false);
 
 
