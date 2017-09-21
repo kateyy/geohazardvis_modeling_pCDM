@@ -496,6 +496,10 @@ void PCDMWidget::saveSurfaceParameters()
         auto transformable = static_cast<CoordinateTransformableDataObject *>(selectedDataObject);
         auto coordinateSystem = transformable->coordinateSystem();
         coordinateSystem.type = CoordinateSystemType::metricLocal;
+        if (coordinateSystem.unitOfMeasurement.isEmpty())
+        {
+            coordinateSystem.unitOfMeasurement = "km";
+        }
         auto localDataSet = transformable->coordinateTransformedDataSet(coordinateSystem);
 
         if (!localDataSet)
