@@ -348,10 +348,10 @@ void PCDMVisualizationGenerator::configureVisualizations(bool validResults) cons
         // default array.
         if (validResults &&
             (!vis->colorMapping().isEnabled()
-                || vis->colorMapping().currentScalarsName() != deformationArrayName))
+                || vis->colorMapping().currentScalarsName() != deformationArrayName
+                || vis->colorMapping().currentScalars().dataComponent() != 2))
         {
-            vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true);
-            vis->colorMapping().currentScalars().setDataComponent(2);
+            vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true, 2);
         }
 
         // If there are no valid results, make sure that the invalidated/zero values are not mapped.
