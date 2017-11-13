@@ -48,7 +48,8 @@ public:
         uninitialized,
         parametersChanged,
         invalidParameters,
-        resultsReady
+        resultsReady,
+        errOutOfMemory
     };
 
     struct Parameters

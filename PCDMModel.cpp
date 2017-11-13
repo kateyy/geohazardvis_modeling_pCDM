@@ -64,6 +64,7 @@ PCDMModel::PCDMModel(
     , m_timestamp{ timestamp }
     , m_name{}
     , m_parameters{}
+    , m_errorFlags{ ErrorFlag::noError }
     , m_results{}
     , m_resultDataObject{}
 {
@@ -145,6 +146,11 @@ bool PCDMModel::hasResults() const
     return loadedResultsAreValid() || m_hasStoredResults;
 }
 
+PCDMModel::ErrorFlags PCDMModel::errorFlags() const
+{
+    return m_errorFlags;
+}
+
 void PCDMModel::setParameters(const pCDM::PointCDMParameters & sourceParameters)
 {
     if (m_parameters == sourceParameters)
@@ -199,6 +205,8 @@ void PCDMModel::requestResultsAsync()
 
     auto runFunc = [this] ()
     {
+        m_errorFlags = ErrorFlag::noError;
+
         PCDMBackend backend;
         backend.setHorizontalCoords(m_project.horizontalCoordinateValues());
         backend.setParameters({ m_parameters, m_project.poissonsRatio() });
@@ -207,6 +215,11 @@ void PCDMModel::requestResultsAsync()
 
         if (backend.state() != PCDMBackend::State::resultsReady)
         {
+            if (backend.state() == PCDMBackend::State::errOutOfMemory)
+            {
+                m_errorFlags |= PCDMModel::ErrorFlag::outOfMemory;
+            }
+
             invalidateResults();
             return;
         }

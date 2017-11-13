@@ -84,6 +84,14 @@ public:
     /** @return whether valid results are computed for this parametrization. */
     bool hasResults() const;
 
+    enum ErrorFlag
+    {
+        noError = 0x0,
+        outOfMemory = 0x1
+    };
+    Q_DECLARE_FLAGS(ErrorFlags, ErrorFlag)
+    ErrorFlags errorFlags() const;
+
     /**
      * Set parameters related to the point CDM.
      * Modifying parameters invalidates previously computed results.
@@ -150,10 +158,14 @@ private:
     pCDM::PointCDMParameters m_parameters;
 
     QFutureWatcher<void> m_computeFutureWatcher;
+    ErrorFlags m_errorFlags;
 
     std::array<std::vector<pCDM::t_FP>, 3> m_results;
     std::unique_ptr<DataObject> m_resultDataObject;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS(PCDMModel::ErrorFlags)
+
 
 
 inline PCDMParamTimestampLess::PCDMParamTimestampLess()

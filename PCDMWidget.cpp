@@ -656,9 +656,18 @@ void PCDMWidget::handleModelDone()
 
     emit m_stateHelper->computingEnded();
 
-    if (!model.hasResults() || model.results()[0].empty())
+    if (model.errorFlags() != PCDMModel::noError
+        || !model.hasResults() || model.results()[0].empty())
     {
-        QMessageBox::critical(this, "pCDM Modeling", "An error occurred in the modeling back-end.");
+        if (model.errorFlags().testFlag(PCDMModel::outOfMemory))
+        {
+            QMessageBox::warning(this, "pCDM Modeling",
+                "Not enough main memory to compute the current model. Please try to close other "
+                "applications and rerun the model, or choose a smaller model setup.");
+            return;
+        }
+        QMessageBox::critical(this, "pCDM Modeling",
+            "An unexpected error occurred in the modeling back-end.");
         return;
     }
 

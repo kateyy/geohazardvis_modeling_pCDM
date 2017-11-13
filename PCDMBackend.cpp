@@ -24,7 +24,10 @@
 
 #include <algorithm>
 #include <cassert>
+#include <exception>
 #include <future>
+#include <new>
+#include <stdexcept>
 
 #include <QDebug>
 
@@ -126,6 +129,27 @@ void PTDdispSurf(
 
     ue_un_uv.block<Eigen::Dynamic, 2>(0, 0, numCoords, 2) =
         (Rz.transpose() * ue_un_temp.matrix().transpose()).transpose();
+}
+
+void PTDdispSurf_checked(
+    const std::array<std::vector<t_FP>, 2> & horizontalCoords,
+    const std::array<t_FP, 2> & xy0,
+    const t_FP depth,
+    const t_FP strike,
+    const t_FP dipRad,
+    const t_FP DV,
+    const t_FP nu,
+    ArrayX3 & ue_un_uv,
+    std::exception_ptr & exceptionPtr)
+{
+    try
+    {
+        PTDdispSurf(horizontalCoords, xy0, depth, strike, dipRad, DV, nu, ue_un_uv);
+    }
+    catch (...)
+    {
+        exceptionPtr = std::current_exception();
+    }
 }
 
 }
@@ -252,20 +276,22 @@ auto PCDMBackend::run() -> State
     }
     const auto dip3Rad = std::acos(R(2, 2));
 
-    std::vector<std::future<void>> PTDdispSurfFutures;
+    std::array<std::future<void>, 3> PTDdispSurfFutures;
+    std::array<std::exception_ptr, 3> exceptions;
 
     // Calculate contribution of the first PTD
     ArrayX3 ue_un_uv1;
     if (DV[0] != 0)
     {
-        PTDdispSurfFutures.push_back(
+        PTDdispSurfFutures[0] = 
             std::async(
                 std::launch::async,
-                PTDdispSurf,
+                PTDdispSurf_checked,
                 m_horizontalCoords,
                 m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
                 strike1, dip1Rad, DV[0], m_parameters.nu,
-                std::ref(ue_un_uv1)));
+                std::ref(ue_un_uv1),
+                std::ref(exceptions[0]));
     }
     else
     {
@@ -277,14 +303,15 @@ auto PCDMBackend::run() -> State
     ArrayX3 ue_un_uv2;
     if (DV[1] != 0)
     {
-        PTDdispSurfFutures.push_back(
+        PTDdispSurfFutures[1] =
             std::async(
                 std::launch::async,
-                PTDdispSurf,
+                PTDdispSurf_checked,
                 m_horizontalCoords,
                 m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
                 strike2, dip2Rad, DV[1], m_parameters.nu,
-                std::ref(ue_un_uv2)));
+                std::ref(ue_un_uv2),
+                std::ref(exceptions[1]));
     }
     else
     {
@@ -296,14 +323,15 @@ auto PCDMBackend::run() -> State
     ArrayX3 ue_un_uv3;
     if (DV[2] != 0)
     {
-        PTDdispSurfFutures.push_back(
+        PTDdispSurfFutures[2] =
             std::async(
                 std::launch::async,
-                PTDdispSurf,
+                PTDdispSurf_checked,
                 m_horizontalCoords,
                 m_parameters.sourceParameters.horizontalCoord, m_parameters.sourceParameters.depth,
                 strike3, dip3Rad, DV[2], m_parameters.nu,
-                std::ref(ue_un_uv3)));
+                std::ref(ue_un_uv3),
+                std::ref(exceptions[2]));
     }
     else
     {
@@ -311,9 +339,22 @@ auto PCDMBackend::run() -> State
         ue_un_uv3.setZero();
     }
 
-    for (auto && future : PTDdispSurfFutures)
+    assert(PTDdispSurfFutures.size() == exceptions.size());
+    for (size_t i = 0; i < PTDdispSurfFutures.size(); ++i)
     {
-        future.get();
+        PTDdispSurfFutures[i].get();
+        if (!exceptions[i])
+        {
+            continue;
+        }
+        try
+        {
+            std::rethrow_exception(exceptions[i]);
+        }
+        catch (const std::bad_alloc & /*ex*/)
+        {
+            return setState(State::errOutOfMemory);
+        }
     }
 
     const auto numTuples = static_cast<size_t>(ue_un_uv1.rows());
