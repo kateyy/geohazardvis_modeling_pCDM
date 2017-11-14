@@ -220,6 +220,9 @@ auto PCDMBackend::run() -> State
         break;
     case PCDMBackend::State::parametersChanged:
         break;
+    case PCDMBackend::State::errOutOfMemory:
+        // Out of memory error in last run: try again
+        break;
     case PCDMBackend::State::invalidParameters:
         qDebug() << "Invalid parameters.";
         return m_state;

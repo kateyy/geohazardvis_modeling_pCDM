@@ -75,6 +75,9 @@ target_include_directories(${staticTarget}
         ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
+)
+target_include_directories(${staticTarget} SYSTEM
+    PRIVATE
         ${EIGEN3_INCLUDE_DIR}
 )
 target_link_libraries(${staticTarget}
