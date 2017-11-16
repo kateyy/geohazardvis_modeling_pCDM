@@ -32,9 +32,10 @@
 #include <vtkSmartPointer.h>
 
 #include <core/AbstractVisualizedData.h>
+#include <core/DataSetHandler.h>
 #include <core/color_mapping/ColorMapping.h>
 #include <core/color_mapping/ColorMappingData.h>
-#include <core/DataSetHandler.h>
+#include <core/color_mapping/ColorBarRepresentation.h>
 #include <core/data_objects/ImageDataObject.h>
 #include <core/data_objects/PointCloudDataObject.h>
 #include <core/utility/qthelper.h>
@@ -344,23 +345,28 @@ void PCDMVisualizationGenerator::configureVisualizations(bool validResults) cons
     // Only configure an already shown visualization, don't create a new one.
     if (auto vis = m_renderView ? m_renderView->visualizationFor(m_dataObject.get()) : nullptr)
     {
+        auto & colorMapping = vis->colorMapping();
         // Make sure that one of the result arrays is mapped to colors. If not, switch to the current
         // default array.
         if (validResults &&
-            (!vis->colorMapping().isEnabled()
-                || vis->colorMapping().currentScalarsName() != deformationArrayName
-                || vis->colorMapping().currentScalars().dataComponent() != 2))
+            (!colorMapping.isEnabled()
+                || colorMapping.currentScalarsName() != deformationArrayName
+                || colorMapping.currentScalars().dataComponent() != 2))
         {
-            vis->colorMapping().setCurrentScalarsByName(deformationArrayName, true, 2);
+            colorMapping.setCurrentScalarsByName(deformationArrayName, true, 2);
+            colorMapping.colorBarRepresentation().setVisible(true);
         }
 
         // If there are no valid results, make sure that the invalidated/zero values are not mapped.
-        if (!validResults && (deformationArrayName == vis->colorMapping().currentScalarsName()))
+        else if (!validResults && (deformationArrayName == colorMapping.currentScalarsName()))
         {
-            vis->colorMapping().setEnabled(false);
+            colorMapping.setEnabled(false);
         }
     }
 
+    // Special case when setting up the model data in a residual verification view: we might just
+    // have changed the model, so trigger make sure results are shown and the residual is up to date.
+    // This also affects linked profile plots.
     if (auto vis = m_residualView ? m_residualView->visualizationFor(m_dataObject.get(), 1) : nullptr)
     {
         vis->colorMapping().setEnabled(validResults);
