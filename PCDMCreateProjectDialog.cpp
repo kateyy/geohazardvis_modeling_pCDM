@@ -16,7 +16,8 @@ PCDMCreateProjectDialog::PCDMCreateProjectDialog(QWidget * parent, Qt::WindowFla
     m_ui->setupUi(this);
 
     connect(m_ui->projectBaseDirButton, &QAbstractButton::clicked, [this] () {
-        const auto dir = QFileDialog::getExistingDirectory(this, "Open Base Directory");
+        const auto dir = QFileDialog::getExistingDirectory(this, "Open Base Directory",
+            m_ui->projectBaseDirEdit->text());
         if (!dir.isEmpty())
         {
             m_ui->projectBaseDirEdit->setText(dir);

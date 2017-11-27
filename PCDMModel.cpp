@@ -336,7 +336,7 @@ void PCDMModel::readResults()
 
     auto failDiscardData = [this, &fileName] ()
     {
-        qDebug() << "Reading previously stored results failed. Discarding data.";
+        qWarning() << "Reading previously stored results failed. Discarding data.";
         QFile(fileName).remove();
         m_hasStoredResults = false;
         writeHasStoredResults();
@@ -366,7 +366,7 @@ void PCDMModel::storeResults()
             [numTuples] (const decltype(m_results)::value_type & vec)
         { return vec.size() == numTuples; }))
     {
-        qDebug() << "Trying to write invalid results";
+        qWarning() << "Trying to write invalid results";
         return;
     }
 
@@ -375,7 +375,7 @@ void PCDMModel::storeResults()
         m_hasStoredResults = success;
         if (!success)
         {
-            qDebug() << "Failed to write results file:" << fileName;
+            qWarning() << "Failed to write results file:" << fileName;
             QFile(fileName).remove();
         }
         writeHasStoredResults();

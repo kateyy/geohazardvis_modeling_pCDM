@@ -172,7 +172,7 @@ void PCDMBackend::setHorizontalCoords(const std::array<std::vector<t_FP>, 2> & c
 {
     if (coords[0].size() != coords[1].size())
     {
-        qDebug() << "Input X, Y must have same size";
+        qWarning() << "Input X, Y must have same size";
         setState(State::invalidParameters);
         return;
     }
@@ -199,7 +199,7 @@ void PCDMBackend::setParameters(const Parameters & parameters)
     QString msg;
     if (!parameters.sourceParameters.isValid(&msg))
     {
-        qDebug() << msg;
+        qWarning() << msg;
         setState(State::invalidParameters);
         return;
     }
@@ -224,7 +224,7 @@ auto PCDMBackend::run() -> State
         // Out of memory error in last run: try again
         break;
     case PCDMBackend::State::invalidParameters:
-        qDebug() << "Invalid parameters.";
+        qWarning() << "Invalid parameters.";
         return m_state;
     case PCDMBackend::State::resultsReady:
         return m_state; // Nothing to do
@@ -232,13 +232,13 @@ auto PCDMBackend::run() -> State
 
     if (m_horizontalCoords[0].size() != m_horizontalCoords[1].size())
     {
-        qDebug() << "Input X, Y must have same size";
+        qWarning() << "Input X, Y must have same size";
         return setState(State::invalidParameters);
     }
 
     if (m_horizontalCoords[0].empty())
     {
-        qDebug() << "No input set.";
+        qWarning() << "No input set.";
         return setState(State::invalidParameters);
     }
 

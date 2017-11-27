@@ -168,7 +168,7 @@ DataObject * PCDMVisualizationGenerator::dataObject()
     else
     {
         assert(false);
-        qDebug() << "Unsupported data set type for horizontal coordinates: " << visDataSet->GetClassName();
+        qWarning() << "Unsupported data set type for horizontal coordinates: " << visDataSet->GetClassName();
         return{};
     }
 
@@ -245,7 +245,7 @@ void PCDMVisualizationGenerator::setModel(PCDMModel & model)
 
         if (numPoints != static_cast<vtkIdType>(uvec[0].size()))
         {
-            qDebug() << "Coordinate and uvec result data set have different number of data points.";
+            qWarning() << "Coordinate and uvec result data set have different number of data points.";
             break;
         }
 
