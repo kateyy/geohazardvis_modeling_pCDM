@@ -75,6 +75,31 @@ PCDMWidget::PCDMWidget(
     m_ui->setupUi(this);
     m_ui->savedModelsTable->sortByColumn(0, Qt::SortOrder::DescendingOrder);
 
+    connect(m_ui->aboutButton, &QAbstractButton::clicked, [this] ()
+    {
+        QMessageBox about(this);
+        about.setWindowTitle("About the pCDM Plugin");
+        about.setTextFormat(Qt::RichText);
+        about.setText(
+            "<b>pCDM: point Compound Dislocation Model</b><br />"
+            "<br />"
+            "Calculates the surface displacements associated with a point CDM that is composed "
+                "of three mutually orthogonal point tensile dislocations in a half-space.<br />"
+            "<br />"
+            "This plugin is based on the work of Mehdi Nikkhoo et al:<br />"
+            "Nikkhoo, M., Walter, T. R., Lundgren, P. R., Prats-Iraola, P. (2017): \"Compound "
+                "dislocation models (CDMs) for volcano deformation analyses.\" - Geophysical "
+                "Journal International, 208 (2): 877-894. doi:10.1093/gji/ggw427<br />"
+            "See: <a href=\"http://volcanodeformation.com/publications.html\">"
+                           "http://volcanodeformation.com/publications.html</a><br />"
+            "<br />"
+            "The source code of this plugin is licensed under GPL-3.0 and is available at:<br />"
+            "<a href=\"https://github.com/kateyy/geohazardvis_modeling_pCDM\">"
+                      "https://github.com/kateyy/geohazardvis_modeling_pCDM</a>"
+        );
+        about.exec();
+    });
+
     m_projectMenu = std::make_unique<QMenu>();
     auto projectNewAction = m_projectMenu->addAction("&New");
     auto projectOpenAction = m_projectMenu->addAction("&Open");
